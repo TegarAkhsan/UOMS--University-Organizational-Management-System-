@@ -17,9 +17,10 @@ export const Login = ({ onLogin, onBack }: { onLogin: (user: any) => void, onBac
     if (isLogin) {
       try {
         const response = await client.post('/login', { email, password });
-        const { access_token, user } = response.data;
+        const { token, user } = response.data;
 
-        localStorage.setItem('auth_token', access_token);
+        localStorage.setItem('auth_token', token);
+        client.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         onLogin(user);
       } catch (err: any) {
         console.error(err);
