@@ -106,7 +106,7 @@ export default function App() {
             <Route path="/surat" element={<Surat />} />
             <Route path="/asistensi" element={<Asistensi />} />
             <Route path="/calendar" element={<Calendar prokers={prokers} setProkers={setProkers} members={members} />} />
-            <Route path="/meetings" element={<Meetings />} />
+            <Route path="/meetings" element={<Meetings user={user} prokers={prokers} />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/work-distribution" element={<WorkDistribution user={user} members={members} prokers={prokers} />} />
           </Route>

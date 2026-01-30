@@ -352,16 +352,9 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($programs as $prog) {
-            // Add Steering Committee (SC) with BPH members
-            $prog['sies'] = [
-                [
-                    'id' => 1,
-                    'name' => 'Steering Committee (SC)',
-                    'coordinator' => 'Tegar Eka Pambudi El Akhsan', // Kahima as Coord SC
-                    'staff' => $bphNames,
-                    'tupoksi' => 'Mengarahkan dan mengawasi jalannya program kerja agar sesuai dengan visi misi organisasi.'
-                ]
-            ];
+            // SC Logic Removed Per User Request
+            // BPH is now handled as a global supervisor by role, not a specific Sie
+            $prog['sies'] = []; // Initialize empty or with other default sies if needed
 
             Program::create($prog);
 

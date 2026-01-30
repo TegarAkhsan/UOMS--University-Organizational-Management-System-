@@ -412,21 +412,34 @@ export const ProjectLeaderView = ({ currentProker: propProker, members, user, se
         setShowTimelineModal(true);
     };
 
-    // Filter available members: Exclude self and BPH
+    // BPH Roles to exclude from coordinator/staff selection
+    const BPH_ROLES = [
+        'ketua himpunan', 'wakil ketua himpunan',
+        'sekretaris umum', 'sekretaris 1', 'sekretaris 2',
+        'bendahara umum', 'bendahara 1', 'bendahara 2'
+    ];
+
+    // Filter available members: Exclude self and BPH executive roles
     const availableMembers = members.filter((m: any) => {
         const isNotSelf = m.name !== user.name;
-        const isNotBPH = m.dept !== 'BPH';
-        const matchesSearch = staffSearchTerm === '' || m.name.toLowerCase().includes(staffSearchTerm.toLowerCase()) || m.dept.toLowerCase().includes(staffSearchTerm.toLowerCase());
+        // Check if member's position/role is a BPH executive role
+        const memberPosition = (m.position || m.role || '').toLowerCase();
+        const isNotBPH = !BPH_ROLES.some(role => memberPosition.includes(role));
+        const matchesSearch = staffSearchTerm === '' || m.name.toLowerCase().includes(staffSearchTerm.toLowerCase()) || (m.dept || '').toLowerCase().includes(staffSearchTerm.toLowerCase());
         return isNotSelf && isNotBPH && matchesSearch;
     });
 
     // --- TIMELINE / ROADMAP CALCULATIONS (Top Level) ---
-    // Assume event date is 30 days from now for visualization base
+    // Use program's event_date for Hari H reference
     const eventDate = useMemo(() => {
+        if (currentProker?.event_date) {
+            return new Date(currentProker.event_date);
+        }
+        // Fallback to 30 days from now if no event_date
         const d = new Date();
         d.setDate(d.getDate() + 30);
         return d;
-    }, []);
+    }, [currentProker?.event_date]);
 
     // Calculate Phase Dates
     const phases = useMemo(() => {
@@ -493,27 +506,48 @@ export const ProjectLeaderView = ({ currentProker: propProker, members, user, se
                     <div className="flex justify-between items-center">
                         <h4 className="font-bold text-lg text-gray-900">Project Phases (Timeline)</h4>
                     </div>
-                    {timelineStages.map((stage, idx) => (
-                        <div key={idx} className="relative pl-6 border-l-2 border-blue-200">
-                            <div className="absolute -left-[9px] top-0 w-4 h-4 bg-blue-600 rounded-full border-4 border-white shadow-sm"></div>
-                            <div className="flex justify-between items-center mb-2">
-                                <h4 className="font-bold text-gray-900">{stage.stage}</h4>
-                                <button onClick={() => openTimelineModal(idx)} className="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 text-blue-600 font-bold">+ Add Item</button>
-                            </div>
-                            <div className="space-y-2">
-                                {stage.items.map((item: any, i) => (
-                                    <div key={i} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg text-sm group">
-                                        <span className="font-medium text-gray-700">{item.name}</span>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-gray-500 bg-white px-2 py-1 rounded border border-gray-200">{item.daysBefore !== undefined ? `H-${item.daysBefore}` : `H+${item.daysAfter}`}</span>
-                                            <button onClick={() => openTimelineModal(idx, item)} className="p-1 text-gray-400 hover:text-blue-500"><Edit size={12} /></button>
-                                            <button onClick={() => handleDeleteTimelineItem(idx, item.id)} className="p-1 text-gray-400 hover:text-red-500"><Trash2 size={12} /></button>
-                                        </div>
+                    {timelineStages.map((stage, idx) => {
+                        const isHariH = stage.stage === 'Hari H';
+                        return (
+                            <div key={idx} className="relative pl-6 border-l-2 border-blue-200">
+                                <div className={`absolute -left-[9px] top-0 w-4 h-4 rounded-full border-4 border-white shadow-sm ${isHariH ? 'bg-red-500' : 'bg-blue-600'}`}></div>
+                                <div className="flex justify-between items-center mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <h4 className={`font-bold ${isHariH ? 'text-red-600' : 'text-gray-900'}`}>{stage.stage}</h4>
+                                        {isHariH && currentProker?.event_date && (
+                                            <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded font-bold">
+                                                📅 {new Date(currentProker.event_date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                            </span>
+                                        )}
+                                        {isHariH && !currentProker?.event_date && (
+                                            <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded italic">
+                                                Event date not set
+                                            </span>
+                                        )}
                                     </div>
-                                ))}
+                                    {!isHariH && <button onClick={() => openTimelineModal(idx)} className="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 text-blue-600 font-bold">+ Add Item</button>}
+                                </div>
+                                <div className="space-y-2">
+                                    {stage.items.map((item: any, i) => (
+                                        <div key={i} className={`flex justify-between items-center p-3 rounded-lg text-sm group ${isHariH ? 'bg-red-50 border border-red-100' : 'bg-gray-50'}`}>
+                                            <span className={`font-medium ${isHariH ? 'text-red-700' : 'text-gray-700'}`}>{item.name}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className={`px-2 py-1 rounded border ${isHariH ? 'text-red-600 bg-red-50 border-red-200 font-bold' : 'text-gray-500 bg-white border-gray-200'}`}>
+                                                    {item.daysBefore !== undefined ? `H-${item.daysBefore}` : `H+${item.daysAfter || 0}`}
+                                                </span>
+                                                {!isHariH && (
+                                                    <>
+                                                        <button onClick={() => openTimelineModal(idx, item)} className="p-1 text-gray-400 hover:text-blue-500"><Edit size={12} /></button>
+                                                        <button onClick={() => handleDeleteTimelineItem(idx, item.id)} className="p-1 text-gray-400 hover:text-red-500"><Trash2 size={12} /></button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 {/* 2. GANTT CHART CONTAINER (Roadmap) */}

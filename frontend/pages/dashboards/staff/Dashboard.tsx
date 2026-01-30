@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Briefcase, ArrowLeft, Calendar, Users, ListTodo, LayoutDashboard, CheckSquare, Folder, ChevronDown, ChevronRight, Menu, LogOut, User, Clock, Settings, X } from 'lucide-react';
+import { Meetings } from '../../../pages/Meetings';
+import { Briefcase, ArrowLeft, Calendar, Users, ListTodo, LayoutDashboard, CheckSquare, Folder, ChevronDown, ChevronRight, Menu, LogOut, User, Clock, Settings, X, Video } from 'lucide-react';
 import { DashboardHeader } from '../../../components/DashboardHeader';
 import { StaffTaskView } from './views/StaffTaskView';
 import { ProjectLeaderView } from '../ketupel/Dashboard';
@@ -175,6 +176,12 @@ export const StaffDashboard = ({ user, onLogout, members, prokers, setProkers, r
                                 >
                                     My Proker
                                 </button>
+                                <button
+                                    onClick={() => handleViewChange('meetings')}
+                                    className={`w-full text-left p-2 text-sm rounded-lg transition-colors flex items-center gap-2 ${activeView === 'meetings' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-500 hover:text-gray-900'}`}
+                                >
+                                    <Video size={14} /> Meetings
+                                </button>
                             </div>
                         )}
                     </div>
@@ -258,7 +265,6 @@ export const StaffDashboard = ({ user, onLogout, members, prokers, setProkers, r
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-gray-900 truncate">{user.name}</p>
-                            <p className="text-xs text-gray-500 truncate">{user.role}</p>
                         </div>
                     </div>
                     <button
@@ -289,6 +295,7 @@ export const StaffDashboard = ({ user, onLogout, members, prokers, setProkers, r
                             <h1 className="text-2xl font-bold text-gray-900">
                                 {activeView === 'my-tasks-kanban' && 'My Tasks & Kanban'}
                                 {activeView === 'my-proker' && 'My Projects'}
+                                {activeView === 'meetings' && 'Meetings'}
                                 {activeView.startsWith('manage-project') && `Manage Project: ${currentProker?.title}`}
                                 {activeView === 'coordinator-view' && 'Coordinator Dashboard'}
                                 {activeView === 'secretary-view' && 'Administration Dashboard'}
@@ -305,6 +312,12 @@ export const StaffDashboard = ({ user, onLogout, members, prokers, setProkers, r
                                 onSelectProker={setSelectedProkerDetail}
                                 viewMode="tasks"
                             />
+                        )}
+
+                        {activeView === 'meetings' && (
+                            <div className="animate-fade-in">
+                                <Meetings user={user} managedProkers={managedProkers} />
+                            </div>
                         )}
 
                         {activeView === 'my-proker' && (

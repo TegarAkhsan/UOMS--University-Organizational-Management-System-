@@ -26,19 +26,23 @@ export const WorkDistribution = ({ user, members, prokers }: { user: any, member
                             const involvedProjects = prokers.map(p => {
                                 let role = null;
                                 // 1. BPH Logic
-                                if ((member.dept === 'BPH' || member.department_id === 'BPH') && ['superadmin', 'sub_super_admin_1', 'sub_super_admin_2'].includes(member.status)) {
-                                    // BPH supervises everything, but usually isn't "staff"
-                                    // We can skip showing all prokers for BPH unless explicitly assigned
-                                    // return null; 
+                                if (member.dept === 'BPH' || member.department_id === 'BPH') {
+                                    // BPH members are automatically considered "BPH" for every project
+                                    // This overrides any specific Sie assignment, per user request
+                                    role = 'BPH';
                                 }
 
-                                // 2. Direct Leader
+                                // 2. Direct Leader (Specific override if they are also the leader)
                                 if (p.leader === member.name || p.leader_name === member.name) {
                                     role = 'Ketua Pelaksana';
                                 }
+
                                 // 3. Sie/Division
-                                else if (p.sies && Array.isArray(p.sies)) {
+                                else if (!role && p.sies && Array.isArray(p.sies)) {
                                     for (const sie of p.sies) {
+                                        // Skip "Steering Committee (SC)" as it's being deprecated/refactored
+                                        if (sie.name === 'Steering Committee (SC)') continue;
+
                                         if (sie.coordinator === member.name) {
                                             role = `Koord. ${sie.name}`;
                                             break;
@@ -49,6 +53,8 @@ export const WorkDistribution = ({ user, members, prokers }: { user: any, member
                                         }
                                     }
                                 }
+
+                                // 4. Secretary/Treasurer (Proker level)
                                 if (p.secretary === member.name || p.secretary_name === member.name) role = 'Sekretaris';
                                 if (p.treasurer === member.name || p.treasurer_name === member.name) role = 'Bendahara';
 
