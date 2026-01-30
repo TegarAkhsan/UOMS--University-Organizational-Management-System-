@@ -64,6 +64,7 @@ class ProgramController extends Controller
             'proposal_status' => 'nullable|string',
             'lpj_status' => 'nullable|string',
             'is_archived' => 'nullable|boolean',
+            'timeline' => 'nullable|array',
         ]);
 
         $program->update($validated);

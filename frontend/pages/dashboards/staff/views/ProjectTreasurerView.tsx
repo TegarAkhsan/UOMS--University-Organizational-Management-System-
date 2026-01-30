@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, FileText, CheckCircle, Plus, File, Copy, Upload, Download, Send, Printer, Check } from 'lucide-react';
+import { DollarSign, FileText, CheckCircle, Plus, File, Copy, Upload, Download, Send, Printer, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { BUDGET_CODES } from '../../../../data/mockData';
 import client from '../../../../src/api/client';
 
@@ -16,6 +16,11 @@ export const ProjectTreasurerView = ({ treasuryProker }: any) => {
     const [rekapItems, setRekapItems] = useState<any[]>([]);
     const [newRekap, setNewRekap] = useState<any>({ noBukti: '', keterangan: '', amount: 0, type: 'Kredit', file: null });
     const [showRekapSuccess, setShowRekapSuccess] = useState(false);
+
+    // Collapsible sections for mobile
+    const [showPrices, setShowPrices] = useState(false);
+    const [showBudgetCodes, setShowBudgetCodes] = useState(false);
+    const [showInputForm, setShowInputForm] = useState(true);
 
     useEffect(() => {
         if (treasuryProker) {
@@ -38,7 +43,7 @@ export const ProjectTreasurerView = ({ treasuryProker }: any) => {
                         qty: i.quantity,
                         price: parseFloat(i.price),
                         total: parseFloat(i.total),
-                        type: i.type || 'Pengeluaran' // Ensure type exists
+                        type: i.type || 'Pengeluaran'
                     })));
                 }
             }
@@ -51,19 +56,12 @@ export const ProjectTreasurerView = ({ treasuryProker }: any) => {
 
     const fetchRecaps = () => {
         client.get(`/programs/${treasuryProker.id}/recaps`).then(res => {
-            // Calculate saldo on the fly
             let currentSaldo = 0;
             const itemsWithSaldo = res.data.map((item: any) => {
-                // Use Math.round for exact integer display
                 const debet = item.type === 'Debet' ? Math.round(parseFloat(item.amount)) : 0;
                 const kredit = item.type === 'Kredit' ? Math.round(parseFloat(item.amount)) : 0;
                 currentSaldo = currentSaldo + debet - kredit;
-                return {
-                    ...item,
-                    debet,
-                    kredit,
-                    saldo: currentSaldo
-                };
+                return { ...item, debet, kredit, saldo: currentSaldo };
             });
             setRekapItems(itemsWithSaldo);
         });
@@ -76,12 +74,9 @@ export const ProjectTreasurerView = ({ treasuryProker }: any) => {
         formData.append('program_id', treasuryProker.id);
         formData.append('description', newRekap.keterangan);
         formData.append('proof_no', newRekap.noBukti || '');
-        // Use Math.round to ensure exact integer value
         formData.append('amount', String(Math.round(Number(newRekap.amount))));
         formData.append('type', newRekap.type);
-        if (newRekap.file) {
-            formData.append('file', newRekap.file);
-        }
+        if (newRekap.file) formData.append('file', newRekap.file);
 
         client.post('/recaps', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
@@ -145,8 +140,6 @@ export const ProjectTreasurerView = ({ treasuryProker }: any) => {
     // Group items for display
     const incomeItems = rabItems.filter(i => i.type === 'Pemasukan');
     const expenseItems = rabItems.filter(i => i.type === 'Pengeluaran');
-
-    // Group expenses by Sie (Category)
     const expensesBySie: { [key: string]: any[] } = {};
     expenseItems.forEach(item => {
         if (!expensesBySie[item.category]) expensesBySie[item.category] = [];
@@ -156,333 +149,330 @@ export const ProjectTreasurerView = ({ treasuryProker }: any) => {
     const totalIncome = incomeItems.reduce((sum, i) => sum + i.total, 0);
     const totalExpense = expenseItems.reduce((sum, i) => sum + i.total, 0);
 
-    // Get Sies from proker for dropdown
     const availableSies = treasuryProker?.sies?.map((s: any) => s.name) || ['Sie Acara', 'Sie Perlengkapan', 'Sie Kesekretariatan', 'Sie Humas', 'Sie Konsumsi'];
 
     return (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden animate-fade-in">
-            <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 className="font-bold text-gray-800">BPK Management Tools: {treasuryProker?.title}</h3>
+            {/* Header - Responsive */}
+            <div className="bg-gray-50 px-4 md:px-6 py-3 md:py-4 border-b border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+                <div>
+                    <h3 className="font-bold text-gray-800 text-sm md:text-base">BPK Management</h3>
+                    <p className="text-xs text-gray-500 md:hidden">{treasuryProker?.title}</p>
+                </div>
                 <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold">Bendahara Pelaksana</span>
             </div>
 
-            <div className="p-6 space-y-8">
-                <div className="flex space-x-4 mb-4">
-                    <button onClick={() => setBpkTab('RAB')} className={`px-4 py-2 rounded-lg text-sm font-bold ${bpkTab === 'RAB' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'} `}>RAB Builder</button>
-                    <button onClick={() => setBpkTab('Recap')} className={`px-4 py-2 rounded-lg text-sm font-bold ${bpkTab === 'Recap' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'} `}>Rekap Dana (Realization)</button>
+            <div className="p-3 md:p-6 space-y-4 md:space-y-6">
+                {/* Tab Buttons - Full width on mobile */}
+                <div className="flex gap-2">
+                    <button onClick={() => setBpkTab('RAB')} className={`flex-1 md:flex-none px-4 py-2.5 rounded-lg text-sm font-bold ${bpkTab === 'RAB' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>RAB Builder</button>
+                    <button onClick={() => setBpkTab('Recap')} className={`flex-1 md:flex-none px-4 py-2.5 rounded-lg text-sm font-bold ${bpkTab === 'Recap' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>Rekap Dana</button>
                 </div>
 
                 {bpkTab === 'RAB' ? (
                     <>
-                        <div className="mb-6 flex justify-between items-end">
-                            <h4 className="font-bold text-lg text-blue-700 flex items-center"><DollarSign className="mr-2" /> Financial & RAB</h4>
-                            <div className="flex items-center gap-2">
-                                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${rabStatus === 'approved' ? 'bg-green-100 text-green-700' :
-                                    rabStatus === 'review_kahima' ? 'bg-indigo-100 text-indigo-700' :
-                                        rabStatus === 'revision' ? 'bg-red-100 text-red-700' :
-                                            rabStatus === 'submitted' ? 'bg-yellow-100 text-yellow-700' :
-                                                'bg-gray-100 text-gray-600'
-                                    }`}>
-                                    {rabStatus === 'review_kahima' ? 'Review Kahima' : rabStatus}
-                                </span>
-                            </div>
+                        {/* Header with Status */}
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+                            <h4 className="font-bold text-base md:text-lg text-blue-700 flex items-center"><DollarSign className="mr-2" size={18} /> Financial & RAB</h4>
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${rabStatus === 'approved' ? 'bg-green-100 text-green-700' : rabStatus === 'revision' ? 'bg-red-100 text-red-700' : rabStatus === 'submitted' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>{rabStatus}</span>
                         </div>
 
-                        {/* Standard Prices & Budget Codes */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm h-96 overflow-y-auto">
-                                <h5 className="font-bold text-gray-800 mb-4 text-sm uppercase tracking-wider">Standard Prices (Harga Wajar)</h5>
-                                {standardPrices.length > 0 ? (
-                                    <table className="w-full text-xs">
-                                        <thead className="bg-gray-50 sticky top-0">
-                                            <tr>
-                                                <th className="p-2 text-left">Category</th>
-                                                <th className="p-2 text-left">Item</th>
-                                                <th className="p-2 text-right">Price (Est)</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {standardPrices.map((sp, idx) => (
-                                                <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50">
-                                                    <td className="p-2 font-bold text-gray-600">{sp.category}</td>
-                                                    <td className="p-2">{sp.name}</td>
-                                                    <td className="p-2 text-right font-mono">{parseInt(sp.price).toLocaleString()}</td>
+                        {/* Collapsible Reference Sections - Collapsed by default on mobile */}
+                        <div className="space-y-3">
+                            {/* Standard Prices - Collapsible */}
+                            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                                <button onClick={() => setShowPrices(!showPrices)} className="w-full flex justify-between items-center p-3 md:p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
+                                    <h5 className="font-bold text-gray-800 text-sm">Harga Wajar ({standardPrices.length})</h5>
+                                    {showPrices ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                </button>
+                                {showPrices && (
+                                    <div className="max-h-60 overflow-y-auto">
+                                        <table className="w-full text-xs">
+                                            <thead className="bg-gray-50 sticky top-0">
+                                                <tr>
+                                                    <th className="p-2 text-left">Item</th>
+                                                    <th className="p-2 text-right">Harga</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                ) : <p className="text-gray-400 text-sm italic text-center mt-10">No standard prices available.</p>}
+                                            </thead>
+                                            <tbody>
+                                                {standardPrices.map((sp, idx) => (
+                                                    <tr key={idx} className="border-b border-gray-50">
+                                                        <td className="p-2">{sp.name}</td>
+                                                        <td className="p-2 text-right font-mono">{parseInt(sp.price).toLocaleString()}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
                             </div>
 
-                            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm h-96 overflow-y-auto">
-                                <h5 className="font-bold text-gray-800 mb-4 text-sm uppercase tracking-wider">Kode Anggaran (Budget Codes)</h5>
-                                <table className="w-full text-xs">
-                                    <thead className="bg-gray-50 sticky top-0">
-                                        <tr>
-                                            <th className="p-2 text-left">Code</th>
-                                            <th className="p-2 text-left">Category</th>
-                                            <th className="p-2 text-left">Description</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {BUDGET_CODES.map((bc, idx) => (
-                                            <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50">
-                                                <td className="p-2 font-bold text-blue-600">{bc.code}</td>
-                                                <td className="p-2 font-bold text-gray-700">{bc.category}</td>
-                                                <td className="p-2 text-gray-500">{bc.description}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                            {/* Budget Codes - Collapsible */}
+                            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                                <button onClick={() => setShowBudgetCodes(!showBudgetCodes)} className="w-full flex justify-between items-center p-3 md:p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
+                                    <h5 className="font-bold text-gray-800 text-sm">Kode Anggaran ({BUDGET_CODES.length})</h5>
+                                    {showBudgetCodes ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                </button>
+                                {showBudgetCodes && (
+                                    <div className="max-h-60 overflow-y-auto">
+                                        <table className="w-full text-xs">
+                                            <thead className="bg-gray-50 sticky top-0">
+                                                <tr>
+                                                    <th className="p-2 text-left">Code</th>
+                                                    <th className="p-2 text-left">Desc</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {BUDGET_CODES.map((bc, idx) => (
+                                                    <tr key={idx} className="border-b border-gray-50">
+                                                        <td className="p-2 font-bold text-blue-600">{bc.code}</td>
+                                                        <td className="p-2 text-gray-600">{bc.description}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
                         {rabStatus === 'revision' && revisionNote && (
-                            <div className="bg-red-50 border border-red-200 p-4 rounded-lg mb-6">
-                                <h5 className="font-bold text-red-800 mb-1">Revision Note from Bendahara BPH:</h5>
+                            <div className="bg-red-50 border border-red-200 p-3 rounded-lg">
+                                <h5 className="font-bold text-red-800 text-sm mb-1">Revision Note:</h5>
                                 <p className="text-red-700 text-sm">{revisionNote}</p>
                             </div>
                         )}
 
-                        {/* RAB Builder */}
-                        <div className="bg-white p-6 rounded-xl border border-blue-200 shadow-sm">
-                            <div className="flex justify-between items-center mb-6">
-                                <h5 className="font-bold text-gray-800 text-lg">Draft RAB Input</h5>
-                                <div className="flex gap-2">
-                                    <button onClick={() => handleExportRAB('Word')} className="flex items-center gap-1 text-xs font-bold text-gray-600 bg-gray-100 px-3 py-2 rounded hover:bg-gray-200"><FileText size={14} /> Word</button>
-                                    <button onClick={() => handleExportRAB('PDF')} className="flex items-center gap-1 text-xs font-bold text-gray-600 bg-gray-100 px-3 py-2 rounded hover:bg-gray-200"><Printer size={14} /> Print/PDF</button>
-                                    <button onClick={handleCopyRAB} className="flex items-center gap-1 text-xs font-bold text-gray-600 bg-gray-100 px-3 py-2 rounded hover:bg-gray-200"><Copy size={14} /> Copy Table</button>
-                                </div>
+                        {/* RAB Input Form - Collapsible */}
+                        {rabStatus !== 'approved' && (
+                            <div className="bg-white p-3 md:p-4 rounded-xl border border-blue-200">
+                                <button onClick={() => setShowInputForm(!showInputForm)} className="w-full flex justify-between items-center mb-3">
+                                    <h5 className="font-bold text-gray-800 text-sm">Input RAB Item</h5>
+                                    {showInputForm ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                </button>
+                                {showInputForm && (
+                                    <div className="space-y-3">
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-700 mb-1">Type</label>
+                                                <select className="w-full p-2 border rounded text-sm" value={newRabItem.type} onChange={e => setNewRabItem({ ...newRabItem, type: e.target.value, category: e.target.value === 'Pemasukan' ? 'Dana Kegiatan' : availableSies[0] })}>
+                                                    <option value="Pemasukan">Pemasukan</option>
+                                                    <option value="Pengeluaran">Pengeluaran</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-700 mb-1">Sie</label>
+                                                {newRabItem.type === 'Pemasukan' ? (
+                                                    <input type="text" className="w-full p-2 border rounded text-sm bg-gray-100" value="Dana Kegiatan" disabled />
+                                                ) : (
+                                                    <select className="w-full p-2 border rounded text-sm" value={newRabItem.category} onChange={e => setNewRabItem({ ...newRabItem, category: e.target.value })}>
+                                                        {availableSies.map((sie: string) => <option key={sie} value={sie}>{sie}</option>)}
+                                                        <option value="Lain-lain">Lain-lain</option>
+                                                    </select>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-700 mb-1">Item Name</label>
+                                            <input type="text" placeholder="e.g. Nasi Kotak" className="w-full p-2 border rounded text-sm" value={newRabItem.item} onChange={e => setNewRabItem({ ...newRabItem, item: e.target.value })} />
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-3">
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-700 mb-1">Qty</label>
+                                                <input type="number" className="w-full p-2 border rounded text-sm" value={newRabItem.qty} onChange={e => setNewRabItem({ ...newRabItem, qty: parseInt(e.target.value) || 0 })} />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-700 mb-1">Unit</label>
+                                                <input type="text" className="w-full p-2 border rounded text-sm" value={newRabItem.unit} onChange={e => setNewRabItem({ ...newRabItem, unit: e.target.value })} />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-700 mb-1">Price</label>
+                                                <input type="number" className="w-full p-2 border rounded text-sm" value={newRabItem.price} onChange={e => setNewRabItem({ ...newRabItem, price: parseInt(e.target.value) || 0 })} />
+                                            </div>
+                                        </div>
+                                        <button onClick={() => { setRabItems([...rabItems, { ...newRabItem, total: newRabItem.qty * newRabItem.price }]); setNewRabItem({ ...newRabItem, item: '', qty: 1, price: 0, unit: 'pcs' }); }} className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold text-sm hover:bg-blue-700">
+                                            <Plus size={16} className="inline mr-1" /> Add Item
+                                        </button>
+                                    </div>
+                                )}
                             </div>
+                        )}
 
-                            {/* Input Form - Only show if not approved */}
-                            {rabStatus !== 'approved' && (
-                                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                    <div className="md:col-span-2">
-                                        <label className="block text-xs font-bold text-gray-700 mb-1">Type</label>
-                                        <select className="w-full p-2 border border-gray-300 rounded text-sm" value={newRabItem.type} onChange={e => setNewRabItem({ ...newRabItem, type: e.target.value, category: e.target.value === 'Pemasukan' ? 'Dana Kegiatan' : availableSies[0] })}>
-                                            <option value="Pemasukan">Pemasukan</option>
-                                            <option value="Pengeluaran">Pengeluaran</option>
-                                        </select>
-                                    </div>
-                                    <div className="md:col-span-3">
-                                        <label className="block text-xs font-bold text-gray-700 mb-1">Bidang/Sie</label>
-                                        {newRabItem.type === 'Pemasukan' ? (
-                                            <input type="text" className="w-full p-2 border border-gray-300 rounded text-sm bg-gray-100" value="Dana Kegiatan" disabled />
-                                        ) : (
-                                            <select className="w-full p-2 border border-gray-300 rounded text-sm" value={newRabItem.category} onChange={e => setNewRabItem({ ...newRabItem, category: e.target.value })}>
-                                                {availableSies.map((sie: string) => <option key={sie} value={sie}>{sie}</option>)}
-                                                <option value="Lain-lain">Lain-lain</option>
-                                            </select>
-                                        )}
-                                    </div>
-                                    <div className="md:col-span-3">
-                                        <label className="block text-xs font-bold text-gray-700 mb-1">Item Name</label>
-                                        <input type="text" placeholder="e.g. Nasi Kotak" className="w-full p-2 border border-gray-300 rounded text-sm" value={newRabItem.item} onChange={e => setNewRabItem({ ...newRabItem, item: e.target.value })} />
-                                    </div>
-                                    <div className="md:col-span-1">
-                                        <label className="block text-xs font-bold text-gray-700 mb-1">Qty</label>
-                                        <input type="number" className="w-full p-2 border border-gray-300 rounded text-sm" value={newRabItem.qty} onChange={e => setNewRabItem({ ...newRabItem, qty: parseInt(e.target.value) || 0 })} />
-                                    </div>
-                                    <div className="md:col-span-1">
-                                        <label className="block text-xs font-bold text-gray-700 mb-1">Unit</label>
-                                        <input type="text" className="w-full p-2 border border-gray-300 rounded text-sm" value={newRabItem.unit} onChange={e => setNewRabItem({ ...newRabItem, unit: e.target.value })} />
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <label className="block text-xs font-bold text-gray-700 mb-1">Price (Rp)</label>
-                                        <input type="number" className="w-full p-2 border border-gray-300 rounded text-sm" value={newRabItem.price} onChange={e => setNewRabItem({ ...newRabItem, price: parseInt(e.target.value) || 0 })} />
-                                    </div>
-                                    <div className="md:col-span-12 flex justify-end">
-                                        <button onClick={() => { setRabItems([...rabItems, { ...newRabItem, total: newRabItem.qty * newRabItem.price }]); setNewRabItem({ ...newRabItem, item: '', qty: 1, price: 0, unit: 'pcs', category: newRabItem.category, type: newRabItem.type }); }} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 shadow-sm">Add</button>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* RAB Table Display */}
-                            <div id="rab-table-container" className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm mb-6">
-                                <table className="w-full text-sm border-collapse">
+                        {/* RAB Table - Scrollable */}
+                        <div id="rab-table-container" className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                            <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border-b">
+                                <button onClick={() => handleExportRAB('Word')} className="flex items-center gap-1 text-xs font-bold text-gray-600 bg-white px-3 py-1.5 rounded border hover:bg-gray-100"><FileText size={14} /> Word</button>
+                                <button onClick={() => handleExportRAB('PDF')} className="flex items-center gap-1 text-xs font-bold text-gray-600 bg-white px-3 py-1.5 rounded border hover:bg-gray-100"><Printer size={14} /> PDF</button>
+                                <button onClick={handleCopyRAB} className="flex items-center gap-1 text-xs font-bold text-gray-600 bg-white px-3 py-1.5 rounded border hover:bg-gray-100"><Copy size={14} /> Copy</button>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm min-w-[500px]">
                                     <thead className="bg-gray-100 border-b-2 border-gray-200">
                                         <tr>
-                                            <th className="p-3 text-left border-r border-gray-200 w-12">No</th>
-                                            <th className="p-3 text-left border-r border-gray-200">Bidang Kerja/Sie</th>
-                                            <th className="p-3 text-left border-r border-gray-200">Kebutuhan</th>
-                                            <th className="p-3 text-center border-r border-gray-200">Satuan</th>
-                                            <th className="p-3 text-right border-r border-gray-200">Harga Satuan</th>
-                                            <th className="p-3 text-right">Jumlah (Rp)</th>
+                                            <th className="p-2 text-left w-10">No</th>
+                                            <th className="p-2 text-left">Sie</th>
+                                            <th className="p-2 text-left">Item</th>
+                                            <th className="p-2 text-center">Qty</th>
+                                            <th className="p-2 text-right">Harga</th>
+                                            <th className="p-2 text-right">Total</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {/* Pemasukan Section */}
-                                        <tr className="bg-green-50 font-bold"><td colSpan={6} className="p-2 text-center border-b border-green-100 text-green-800">Pemasukan</td></tr>
+                                        {/* Pemasukan */}
+                                        <tr className="bg-green-50 font-bold"><td colSpan={6} className="p-2 text-center text-green-800">Pemasukan</td></tr>
                                         {incomeItems.length > 0 ? incomeItems.map((item, idx) => (
                                             <tr key={`in-${idx}`} className="border-b border-gray-100">
-                                                <td className="p-2 text-center border-r">{idx + 1}</td>
-                                                <td className="p-2 border-r">{item.category}</td>
-                                                <td className="p-2 border-r">{item.item}</td>
-                                                <td className="p-2 text-center border-r">{item.qty} {item.unit}</td>
-                                                <td className="p-2 text-right border-r">{item.price.toLocaleString()}</td>
+                                                <td className="p-2 text-center">{idx + 1}</td>
+                                                <td className="p-2">{item.category}</td>
+                                                <td className="p-2">{item.item}</td>
+                                                <td className="p-2 text-center">{item.qty}</td>
+                                                <td className="p-2 text-right">{item.price.toLocaleString()}</td>
                                                 <td className="p-2 text-right font-medium">{item.total.toLocaleString()}</td>
                                             </tr>
-                                        )) : <tr><td colSpan={6} className="p-2 text-center text-gray-400 italic">Belum ada data pemasukan</td></tr>}
+                                        )) : <tr><td colSpan={6} className="p-2 text-center text-gray-400 italic">Belum ada data</td></tr>}
                                         <tr className="bg-green-100 font-bold">
-                                            <td colSpan={5} className="p-2 text-right border-r border-green-200">Total Pemasukan</td>
+                                            <td colSpan={5} className="p-2 text-right">Total Pemasukan</td>
                                             <td className="p-2 text-right text-green-800">{totalIncome.toLocaleString()}</td>
                                         </tr>
 
-                                        {/* Pengeluaran Section */}
-                                        <tr className="bg-red-50 font-bold"><td colSpan={6} className="p-2 text-center border-b border-red-100 text-red-800">Pengeluaran</td></tr>
+                                        {/* Pengeluaran */}
+                                        <tr className="bg-red-50 font-bold"><td colSpan={6} className="p-2 text-center text-red-800">Pengeluaran</td></tr>
                                         {Object.keys(expensesBySie).length > 0 ? Object.keys(expensesBySie).map((sie, sieIdx) => (
                                             <React.Fragment key={sie}>
                                                 {expensesBySie[sie].map((item, idx) => (
                                                     <tr key={`ex-${sie}-${idx}`} className="border-b border-gray-100">
-                                                        <td className="p-2 text-center border-r">{sieIdx + 1}</td>
-                                                        <td className="p-2 border-r font-medium">{idx === 0 ? sie : ''}</td>
-                                                        <td className="p-2 border-r">{item.item}</td>
-                                                        <td className="p-2 text-center border-r">{item.qty} {item.unit}</td>
-                                                        <td className="p-2 text-right border-r">{item.price.toLocaleString()}</td>
+                                                        <td className="p-2 text-center">{sieIdx + 1}</td>
+                                                        <td className="p-2 font-medium">{idx === 0 ? sie : ''}</td>
+                                                        <td className="p-2">{item.item}</td>
+                                                        <td className="p-2 text-center">{item.qty}</td>
+                                                        <td className="p-2 text-right">{item.price.toLocaleString()}</td>
                                                         <td className="p-2 text-right font-medium">{item.total.toLocaleString()}</td>
                                                     </tr>
                                                 ))}
                                             </React.Fragment>
-                                        )) : <tr><td colSpan={6} className="p-2 text-center text-gray-400 italic">Belum ada data pengeluaran</td></tr>}
+                                        )) : <tr><td colSpan={6} className="p-2 text-center text-gray-400 italic">Belum ada data</td></tr>}
                                         <tr className="bg-red-100 font-bold">
-                                            <td colSpan={5} className="p-2 text-right border-r border-red-200">Total Pengeluaran</td>
+                                            <td colSpan={5} className="p-2 text-right">Total Pengeluaran</td>
                                             <td className="p-2 text-right text-red-800">{totalExpense.toLocaleString()}</td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
 
-                            <div className="mt-6 flex gap-2 justify-end">
-                                {rabStatus === 'draft' || rabStatus === 'revision' ? (
-                                    <>
-                                        <button onClick={() => saveRab('draft')} className="bg-gray-600 text-white px-6 py-2.5 rounded-lg font-bold text-sm shadow-sm hover:bg-gray-700 flex items-center">
-                                            <CheckCircle className="mr-2" size={16} /> Save Draft
-                                        </button>
-                                        <button onClick={() => saveRab('submitted')} className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-bold text-sm shadow-sm hover:bg-blue-700 flex items-center">
-                                            <Send className="mr-2" size={16} /> Submit for Assistance
-                                        </button>
-                                    </>
-                                ) : (
-                                    <p className="text-sm text-gray-500 italic">RAB has been submitted/approved. Changes are locked.</p>
-                                )}
-                            </div>
+                        {/* Action Buttons - Stack on mobile */}
+                        <div className="flex flex-col md:flex-row gap-2 md:justify-end">
+                            {rabStatus === 'draft' || rabStatus === 'revision' ? (
+                                <>
+                                    <button onClick={() => saveRab('draft')} className="bg-gray-600 text-white px-4 py-2.5 rounded-lg font-bold text-sm hover:bg-gray-700 flex items-center justify-center">
+                                        <CheckCircle className="mr-2" size={16} /> Save Draft
+                                    </button>
+                                    <button onClick={() => saveRab('submitted')} className="bg-blue-600 text-white px-4 py-2.5 rounded-lg font-bold text-sm hover:bg-blue-700 flex items-center justify-center">
+                                        <Send className="mr-2" size={16} /> Submit
+                                    </button>
+                                </>
+                            ) : (
+                                <p className="text-sm text-gray-500 italic text-center">RAB submitted/approved. Changes locked.</p>
+                            )}
                         </div>
                     </>
                 ) : (
                     <>
-                        <h4 className="font-bold text-lg text-indigo-700 flex items-center mb-4"><FileText className="mr-2" /> Rekap Dana (Realization)</h4>
+                        <h4 className="font-bold text-base md:text-lg text-indigo-700 flex items-center"><FileText className="mr-2" size={18} /> Rekap Dana (Realization)</h4>
 
-                        {/* Input Realization Form */}
-                        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-6 mb-8 shadow-sm">
-                            <div className="flex items-center mb-4 text-indigo-900">
-                                <div className="w-8 h-8 rounded-full bg-indigo-200 flex items-center justify-center mr-3 text-sm font-bold">1</div>
-                                <h5 className="font-bold text-lg">Input Transaksi Baru</h5>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        {/* Input Form - More compact for mobile */}
+                        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 md:p-4">
+                            <h5 className="font-bold text-sm mb-3 text-indigo-900">Input Transaksi Baru</h5>
+                            <div className="space-y-3">
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Keterangan Transaksi</label>
-                                    <input type="text" placeholder="e.g. Pembelian Konsumsi" className="w-full p-2.5 border border-gray-300 rounded-lg text-sm bg-white" value={newRekap.keterangan} onChange={e => setNewRekap({ ...newRekap, keterangan: e.target.value })} />
+                                    <label className="block text-xs font-bold text-gray-700 mb-1">Keterangan</label>
+                                    <input type="text" placeholder="e.g. Pembelian Konsumsi" className="w-full p-2 border rounded text-sm" value={newRekap.keterangan} onChange={e => setNewRekap({ ...newRekap, keterangan: e.target.value })} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">No. Bukti</label>
+                                        <input type="text" placeholder="002/OUT/VIII" className="w-full p-2 border rounded text-sm" value={newRekap.noBukti} onChange={e => setNewRekap({ ...newRekap, noBukti: e.target.value })} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">Nominal</label>
+                                        <input type="number" placeholder="0" className="w-full p-2 border rounded text-sm" value={newRekap.amount} onChange={e => setNewRekap({ ...newRekap, amount: parseInt(e.target.value) })} />
+                                    </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">No. Bukti / Kwitansi</label>
-                                    <input type="text" placeholder="e.g. 002/OUT/VIII" className="w-full p-2.5 border border-gray-300 rounded-lg text-sm bg-white" value={newRekap.noBukti} onChange={e => setNewRekap({ ...newRekap, noBukti: e.target.value })} />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Nominal (Rp)</label>
-                                    <input type="number" placeholder="0" className="w-full p-2.5 border border-gray-300 rounded-lg text-sm bg-white" value={newRekap.amount} onChange={e => setNewRekap({ ...newRekap, amount: parseInt(e.target.value) })} />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Jenis Transaksi</label>
-                                    <select className="w-full p-2.5 border border-gray-300 rounded-lg text-sm bg-white" value={newRekap.type} onChange={e => setNewRekap({ ...newRekap, type: e.target.value })}>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1">Jenis</label>
+                                    <select className="w-full p-2 border rounded text-sm" value={newRekap.type} onChange={e => setNewRekap({ ...newRekap, type: e.target.value })}>
                                         <option value="Debet">Pemasukan (Debet)</option>
                                         <option value="Kredit">Pengeluaran (Kredit)</option>
                                     </select>
                                 </div>
-                            </div>
-
-                            <div className="mb-4">
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Upload Bukti / Kwitansi</label>
-                                <div className="border border-dashed border-indigo-300 bg-indigo-50/50 rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-white transition-colors">
-                                    <input
-                                        type="file"
-                                        id="rekap-file"
-                                        className="hidden"
-                                        onChange={e => setNewRekap({ ...newRekap, file: e.target.files ? e.target.files[0] : null })}
-                                    />
-                                    <label htmlFor="rekap-file" className="cursor-pointer flex flex-col items-center">
-                                        <Upload className="text-indigo-400 mb-1" size={20} />
-                                        <p className="text-xs text-indigo-600 font-medium">{newRekap.file ? newRekap.file.name : 'Click to upload image/pdf'}</p>
-                                    </label>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1">Bukti</label>
+                                    <div className="border border-dashed border-indigo-300 bg-white rounded-lg p-3 text-center">
+                                        <input type="file" id="rekap-file" className="hidden" onChange={e => setNewRekap({ ...newRekap, file: e.target.files ? e.target.files[0] : null })} />
+                                        <label htmlFor="rekap-file" className="cursor-pointer flex flex-col items-center">
+                                            <Upload className="text-indigo-400 mb-1" size={18} />
+                                            <p className="text-xs text-indigo-600">{newRekap.file ? newRekap.file.name : 'Upload file'}</p>
+                                        </label>
+                                    </div>
                                 </div>
-                            </div>
-
-                            <div className="flex justify-end">
-                                <button onClick={handleAddRekap} className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-indigo-700 shadow-sm flex items-center">
-                                    <Plus className="mr-1" size={16} /> Tambah Data
+                                <button onClick={handleAddRekap} className="w-full bg-indigo-600 text-white py-2 rounded-lg font-bold text-sm hover:bg-indigo-700">
+                                    <Plus className="inline mr-1" size={16} /> Tambah Data
                                 </button>
                             </div>
                         </div>
 
-                        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                            <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
-                                <h5 className="font-bold text-gray-800">Tabel Realisasi Dana</h5>
+                        {/* Rekap Table - Scrollable */}
+                        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                            <div className="bg-gray-50 px-4 py-3 border-b">
+                                <h5 className="font-bold text-gray-800 text-sm">Tabel Realisasi</h5>
                             </div>
-                            <table className="w-full text-sm">
-                                <thead className="bg-gray-100">
-                                    <tr>
-                                        <th className="p-3 text-left">No. Bukti</th>
-                                        <th className="p-3 text-left">Keterangan</th>
-                                        <th className="p-3 text-right">Debet (Pemasukan)</th>
-                                        <th className="p-3 text-right">Kredit (Pengeluaran)</th>
-                                        <th className="p-3 text-right">Saldo</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {rekapItems.map((item, idx) => (
-                                        <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50">
-                                            <td className="p-3 font-mono text-xs text-gray-600">{item.proof_no || item.noBukti}</td>
-                                            <td className="p-3 font-medium">{item.description || item.keterangan}</td>
-                                            <td className="p-3 text-right text-green-600">{item.debet > 0 ? item.debet.toLocaleString() : '-'}</td>
-                                            <td className="p-3 text-right text-red-600">{item.kredit > 0 ? item.kredit.toLocaleString() : '-'}</td>
-                                            <td className="p-3 text-right font-bold text-gray-800">{item.saldo.toLocaleString()}</td>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm min-w-[400px]">
+                                    <thead className="bg-gray-100">
+                                        <tr>
+                                            <th className="p-2 text-left">Keterangan</th>
+                                            <th className="p-2 text-right">Debet</th>
+                                            <th className="p-2 text-right">Kredit</th>
+                                            <th className="p-2 text-right">Saldo</th>
                                         </tr>
-                                    ))}
-                                    <tr className="bg-gray-50 font-bold border-t border-gray-200">
-                                        <td colSpan={4} className="p-3 text-right">Sisa Saldo Akhir</td>
-                                        <td className="p-3 text-right text-blue-700">{rekapItems.length > 0 ? rekapItems[rekapItems.length - 1].saldo.toLocaleString() : '0'}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {rekapItems.map((item, idx) => (
+                                            <tr key={idx} className="border-b border-gray-50">
+                                                <td className="p-2 font-medium">{item.description || item.keterangan}</td>
+                                                <td className="p-2 text-right text-green-600">{item.debet > 0 ? item.debet.toLocaleString() : '-'}</td>
+                                                <td className="p-2 text-right text-red-600">{item.kredit > 0 ? item.kredit.toLocaleString() : '-'}</td>
+                                                <td className="p-2 text-right font-bold">{item.saldo.toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                        <tr className="bg-gray-50 font-bold border-t">
+                                            <td colSpan={3} className="p-2 text-right">Saldo Akhir</td>
+                                            <td className="p-2 text-right text-blue-700">{rekapItems.length > 0 ? rekapItems[rekapItems.length - 1].saldo.toLocaleString() : '0'}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                        <div className="mt-4 flex justify-end">
-                            <button className="bg-green-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-green-700 flex items-center shadow-sm">
-                                <Download className="mr-2" size={16} /> Export to Spreadsheet
-                            </button>
-                        </div>
+                        <button className="w-full md:w-auto bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-700 flex items-center justify-center">
+                            <Download className="mr-2" size={16} /> Export
+                        </button>
                     </>
                 )}
             </div>
 
-            {/* Rekap Dana Success Modal */}
+            {/* Success Modal */}
             {showRekapSuccess && (
-                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-scale-in">
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
                         <div className="bg-green-600 p-6 text-center">
-                            <div className="mx-auto bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mb-4 backdrop-blur-md">
+                            <div className="mx-auto bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mb-4">
                                 <Check size={32} className="text-white" />
                             </div>
-                            <h3 className="text-2xl font-bold text-white">Berhasil!</h3>
+                            <h3 className="text-xl font-bold text-white">Berhasil!</h3>
                             <p className="text-green-100 mt-2 text-sm">Data Rekap Berhasil Ditambahkan</p>
                         </div>
-                        <div className="p-6">
-                            <button
-                                onClick={() => setShowRekapSuccess(false)}
-                                className="w-full bg-gray-900 text-white py-3 rounded-xl font-bold hover:bg-gray-800 transition-all"
-                            >
-                                OK
-                            </button>
+                        <div className="p-4">
+                            <button onClick={() => setShowRekapSuccess(false)} className="w-full bg-gray-900 text-white py-3 rounded-xl font-bold hover:bg-gray-800">OK</button>
                         </div>
                     </div>
                 </div>

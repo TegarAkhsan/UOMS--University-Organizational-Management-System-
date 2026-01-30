@@ -39,7 +39,8 @@ export const ProjectLeaderView = ({ currentProker: propProker, members, user, se
 
     // Temp State for UI
     const [newSie, setNewSie] = useState('');
-    const [newTask, setNewTask] = useState({ title: '', deadline: '', sieId: 1 });
+    const [newTask, setNewTask] = useState({ title: '', deadline: '', sieId: 0, description: '', file: null as File | null });
+    const [showTaskModal, setShowTaskModal] = useState(false);
     const [selectedSieForStaff, setSelectedSieForStaff] = useState<any>(null);
     const [expandedSie, setExpandedSie] = useState<number | null>(null);
     const [staffSearchTerm, setStaffSearchTerm] = useState('');
@@ -56,10 +57,17 @@ export const ProjectLeaderView = ({ currentProker: propProker, members, user, se
     const [selectedReviewTask, setSelectedReviewTask] = useState<any>(null);
     const [leaderRevisionNote, setLeaderRevisionNote] = useState('');
     const [showLeaderReviewModal, setShowLeaderReviewModal] = useState(false);
+    const [reviewFile, setReviewFile] = useState<File | null>(null);
 
     // Notification system hooks
     const { showSuccess, showError } = useNotification();
     const [showDeleteConfirm, setShowDeleteConfirm] = useState<{ isOpen: boolean; sieToDelete: any | null }>({ isOpen: false, sieToDelete: null });
+
+    // Edit/Delete Task States
+    const [editingTask, setEditingTask] = useState<any>(null);
+    const [showEditTaskModal, setShowEditTaskModal] = useState(false);
+    const [editTaskForm, setEditTaskForm] = useState({ title: '', deadline: '', description: '' });
+    const [showDeleteTaskConfirm, setShowDeleteTaskConfirm] = useState<{ isOpen: boolean; taskToDelete: any | null; sieId: number | null }>({ isOpen: false, taskToDelete: null, sieId: null });
 
     // Sync BPK state when currentProker changes
     useEffect(() => {
@@ -107,16 +115,23 @@ export const ProjectLeaderView = ({ currentProker: propProker, members, user, se
     const handleLeaderReview = (status: 'approved' | 'revision') => {
         if (!selectedReviewTask) return;
 
-        const updateData: any = { status: status === 'approved' ? 'review_kahima' : 'revision' };
-        if (status === 'revision') {
-            updateData.revision_note = leaderRevisionNote;
-        }
-
         import('../../../src/api/client').then(({ default: client }) => {
-            client.put(`/tasks/${selectedReviewTask.id}`, updateData).then(res => {
+            const formData = new FormData();
+            formData.append('status', status === 'approved' ? 'review_kahima' : 'revision');
+            if (status === 'revision') {
+                formData.append('revision_note', leaderRevisionNote);
+            }
+            if (reviewFile) {
+                formData.append('submission_file', reviewFile);
+            }
+
+            client.put(`/tasks/${selectedReviewTask.id}`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            }).then(res => {
                 setReviewTasks(reviewTasks.filter(t => t.id !== selectedReviewTask.id));
                 setShowLeaderReviewModal(false);
                 setLeaderRevisionNote('');
+                setReviewFile(null);
                 showSuccess(status === 'approved' ? 'Task approved and forwarded to Kahima!' : 'Task returned for revision');
                 // Refresh all tasks for Kanban
                 client.get(`/tasks?program_id=${currentProker.id}`).then(r => setAllTasks(r.data));
@@ -249,14 +264,42 @@ export const ProjectLeaderView = ({ currentProker: propProker, members, user, se
 
     const handleAddTask = (sieId: number) => {
         if (!newTask.title) return;
-        const updatedSies = sies.map(s => {
-            if (s.id === sieId) {
-                return { ...s, tasks: [...(s.tasks || []), { id: Date.now(), title: newTask.title, deadline: newTask.deadline, status: 'ready', description: 'New task assigned.' }] };
+
+        // Find the sie to get staff assigned to it
+        const sie = sies.find(s => s.id === sieId);
+
+        // Create task via API using FormData for file support
+        import('../../../src/api/client').then(({ default: client }) => {
+            const formData = new FormData();
+            formData.append('program_id', currentProker.id.toString());
+            formData.append('title', newTask.title);
+            formData.append('deadline', newTask.deadline);
+            formData.append('status', 'ready');
+            formData.append('description', newTask.description || `Task for ${sie?.name || 'Sie'}`);
+            if (newTask.file) {
+                formData.append('attachment_file', newTask.file);
             }
-            return s;
+
+            client.post('/tasks', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            }).then(res => {
+                showSuccess(`Task "${newTask.title}" added successfully!`);
+                // Also update local sie tasks for immediate UI feedback
+                const updatedSies = sies.map(s => {
+                    if (s.id === sieId) {
+                        return { ...s, tasks: [...(s.tasks || []), { id: res.data.id, title: newTask.title, deadline: newTask.deadline, status: 'ready' }] };
+                    }
+                    return s;
+                });
+                setSies(updatedSies);
+                setNewTask({ title: '', deadline: '', sieId: 0, description: '', file: null });
+                setShowTaskModal(false);
+                // Refresh all tasks
+                client.get(`/tasks?program_id=${currentProker.id}`).then(r => setAllTasks(r.data));
+            }).catch(err => {
+                showError('Failed to add task: ' + (err.response?.data?.message || err.message));
+            });
         });
-        setSies(updatedSies);
-        setNewTask({ title: '', deadline: '', sieId: 1 });
     };
 
     const handleToggleSieStaff = (sieId: number, memberName: string) => {
@@ -265,6 +308,64 @@ export const ProjectLeaderView = ({ currentProker: propProker, members, user, se
         const exists = sie.staff.includes(memberName);
         let newStaff = exists ? sie.staff.filter((m: string) => m !== memberName) : [...sie.staff, memberName];
         handleUpdateSie(sieId, 'staff', newStaff);
+    };
+
+    // Edit Task Handler
+    const handleEditTask = () => {
+        if (!editingTask || !editTaskForm.title) return;
+
+        import('../../../src/api/client').then(({ default: client }) => {
+            client.put(`/tasks/${editingTask.id}`, {
+                title: editTaskForm.title,
+                deadline: editTaskForm.deadline,
+                description: editTaskForm.description
+            }).then(res => {
+                // Update local sie tasks
+                const updatedSies = sies.map(s => ({
+                    ...s,
+                    tasks: (s.tasks || []).map((t: any) =>
+                        t.id === editingTask.id ? { ...t, ...editTaskForm } : t
+                    )
+                }));
+                setSies(updatedSies);
+                setShowEditTaskModal(false);
+                setEditingTask(null);
+                showSuccess(`Task "${editTaskForm.title}" updated successfully!`);
+                // Refresh tasks
+                client.get(`/tasks?program_id=${currentProker.id}`).then(r => setAllTasks(r.data));
+            }).catch(err => {
+                showError('Failed to update task: ' + (err.response?.data?.message || err.message));
+            });
+        });
+    };
+
+    // Delete Task Handler
+    const handleDeleteTask = () => {
+        if (!showDeleteTaskConfirm.taskToDelete) return;
+
+        import('../../../src/api/client').then(({ default: client }) => {
+            client.delete(`/tasks/${showDeleteTaskConfirm.taskToDelete.id}`).then(() => {
+                // Update local sie tasks
+                const updatedSies = sies.map(s => ({
+                    ...s,
+                    tasks: (s.tasks || []).filter((t: any) => t.id !== showDeleteTaskConfirm.taskToDelete.id)
+                }));
+                setSies(updatedSies);
+                setShowDeleteTaskConfirm({ isOpen: false, taskToDelete: null, sieId: null });
+                showSuccess(`Task "${showDeleteTaskConfirm.taskToDelete.title}" deleted successfully!`);
+                // Refresh tasks
+                client.get(`/tasks?program_id=${currentProker.id}`).then(r => setAllTasks(r.data));
+            }).catch(err => {
+                showError('Failed to delete task: ' + (err.response?.data?.message || err.message));
+            });
+        });
+    };
+
+    // Open Edit Task Modal
+    const openEditTaskModal = (task: any) => {
+        setEditingTask(task);
+        setEditTaskForm({ title: task.title, deadline: task.deadline || '', description: task.description || '' });
+        setShowEditTaskModal(true);
     };
 
     const handleSaveTimelineItem = () => {
@@ -674,17 +775,83 @@ export const ProjectLeaderView = ({ currentProker: propProker, members, user, se
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">Tasks & Deadlines</label>
                                                     <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                                                         {(sie.tasks || []).map((task: any) => (
-                                                            <div key={task.id} className="flex justify-between items-center bg-white p-2 rounded shadow-sm border border-gray-100">
-                                                                <span className="text-sm font-medium text-gray-800">{task.title}</span>
-                                                                <div className="flex items-center gap-3"><span className="text-xs text-gray-500">{task.deadline}</span></div>
+                                                            <div key={task.id} className="flex justify-between items-center bg-white p-3 rounded shadow-sm border border-gray-100 group hover:border-gray-300 transition-colors">
+                                                                <div className="flex-1">
+                                                                    <span className="text-sm font-medium text-gray-800">{task.title}</span>
+                                                                    {task.description && <p className="text-xs text-gray-500 mt-1">{task.description}</p>}
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-xs text-gray-500">{task.deadline}</span>
+                                                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                        <button
+                                                                            onClick={() => openEditTaskModal(task)}
+                                                                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                                                                            title="Edit"
+                                                                        >
+                                                                            <Edit size={14} />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => setShowDeleteTaskConfirm({ isOpen: true, taskToDelete: task, sieId: sie.id })}
+                                                                            className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                                                                            title="Delete"
+                                                                        >
+                                                                            <Trash2 size={14} />
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         ))}
-                                                        <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                                                            <input type="text" placeholder="New Task" className="flex-1 p-2 text-sm border border-gray-300 rounded-lg w-full" value={newTask.sieId === sie.id ? newTask.title : ''} onChange={(e) => setNewTask({ ...newTask, title: e.target.value, sieId: sie.id })} />
-                                                            <div className="flex gap-2">
-                                                                <input type="date" className="flex-1 sm:w-32 p-2 text-sm border border-gray-300 rounded-lg" value={newTask.sieId === sie.id ? newTask.deadline : ''} onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value, sieId: sie.id })} />
-                                                                <button onClick={() => handleAddTask(sie.id)} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-xs hover:bg-green-700 whitespace-nowrap">Add</button>
+                                                        {/* Expanded Inline Task Creation Form */}
+                                                        <div className="bg-white p-4 rounded-lg border border-gray-200 mt-3 space-y-3">
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                <div>
+                                                                    <label className="block text-xs font-bold text-gray-600 mb-1">Task Title *</label>
+                                                                    <input
+                                                                        type="text" placeholder="Enter task title"
+                                                                        className="w-full p-2 text-sm border border-gray-300 rounded-lg"
+                                                                        value={newTask.sieId === sie.id ? newTask.title : ''}
+                                                                        onChange={(e) => setNewTask({ ...newTask, title: e.target.value, sieId: sie.id })}
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-xs font-bold text-gray-600 mb-1">Deadline</label>
+                                                                    <input
+                                                                        type="date"
+                                                                        className="w-full p-2 text-sm border border-gray-300 rounded-lg cursor-pointer bg-white"
+                                                                        value={newTask.sieId === sie.id ? newTask.deadline : ''}
+                                                                        onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value, sieId: sie.id })}
+                                                                        onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                                                                    />
+                                                                </div>
                                                             </div>
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-gray-600 mb-1">Description (optional)</label>
+                                                                <textarea
+                                                                    placeholder="Describe the task..."
+                                                                    className="w-full p-2 text-sm border border-gray-300 rounded-lg"
+                                                                    rows={2}
+                                                                    value={newTask.sieId === sie.id ? newTask.description : ''}
+                                                                    onChange={(e) => setNewTask({ ...newTask, description: e.target.value, sieId: sie.id })}
+                                                                />
+                                                            </div>
+                                                            <div className="flex flex-col sm:flex-row gap-3 items-end">
+                                                                <div className="flex-1">
+                                                                    <label className="block text-xs font-bold text-gray-600 mb-1">Attachment (optional)</label>
+                                                                    <input
+                                                                        type="file"
+                                                                        className="w-full p-2 text-sm border border-gray-300 rounded-lg bg-white"
+                                                                        onChange={(e) => setNewTask({ ...newTask, file: e.target.files?.[0] || null, sieId: sie.id })}
+                                                                    />
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => handleAddTask(sie.id)}
+                                                                    disabled={!newTask.title || newTask.sieId !== sie.id}
+                                                                    className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-700 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                >
+                                                                    + Add Task
+                                                                </button>
+                                                            </div>
+                                                            {newTask.file && newTask.sieId === sie.id && <p className="text-xs text-green-600">📎 {newTask.file.name}</p>}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -739,13 +906,83 @@ export const ProjectLeaderView = ({ currentProker: propProker, members, user, se
                 </div>
             </Modal>
 
-            {/* Leader Review Modal */}
-            <Modal isOpen={showLeaderReviewModal} onClose={() => setShowLeaderReviewModal(false)} title="Review Task (Ketua Pelaksana)">
+            {/* Task Creation Modal */}
+            <Modal isOpen={showTaskModal} onClose={() => setShowTaskModal(false)} title="Create New Task">
                 <div className="space-y-4">
-                    <p>Reviewing task: <strong>{selectedReviewTask?.title}</strong></p>
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Task Title *</label>
+                        <input
+                            type="text" className="w-full p-2 border rounded-lg text-sm"
+                            value={newTask.title} onChange={e => setNewTask({ ...newTask, title: e.target.value })}
+                            placeholder="Enter task title"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Description (optional)</label>
+                        <textarea
+                            className="w-full p-2 border rounded-lg text-sm" rows={3}
+                            value={newTask.description} onChange={e => setNewTask({ ...newTask, description: e.target.value })}
+                            placeholder="Describe the task in detail..."
+                        />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-1">Assign to Sie</label>
+                            <select
+                                className="w-full p-2 border rounded-lg bg-white text-sm"
+                                value={newTask.sieId} onChange={e => setNewTask({ ...newTask, sieId: parseInt(e.target.value) })}
+                            >
+                                <option value={0}>Select Sie</option>
+                                {sies.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-1">Deadline</label>
+                            <input
+                                type="date" className="w-full p-2 border rounded-lg text-sm"
+                                value={newTask.deadline} onChange={e => setNewTask({ ...newTask, deadline: e.target.value })}
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Attachment (optional)</label>
+                        <input
+                            type="file" className="w-full p-2 border rounded-lg text-sm"
+                            onChange={e => setNewTask({ ...newTask, file: e.target.files?.[0] || null })}
+                        />
+                        {newTask.file && <p className="text-xs text-green-600 mt-1">File: {newTask.file.name}</p>}
+                    </div>
+                    <div className="flex justify-end pt-4">
+                        <button
+                            onClick={() => handleAddTask(newTask.sieId)}
+                            disabled={!newTask.title || !newTask.sieId}
+                            className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Create Task
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Leader Review Modal */}
+            <Modal isOpen={showLeaderReviewModal} onClose={() => { setShowLeaderReviewModal(false); setReviewFile(null); }} title="Review Task (Ketua Pelaksana)">
+                <div className="space-y-4">
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                        <p className="text-sm">Reviewing task: <strong>{selectedReviewTask?.title}</strong></p>
+                        {selectedReviewTask?.description && <p className="text-xs text-gray-500 mt-1">{selectedReviewTask?.description}</p>}
+                    </div>
                     <div>
                         <label className="block text-sm font-bold mb-1">Revision Note (if rejecting)</label>
-                        <textarea className="w-full p-2 border rounded-lg" rows={3} value={leaderRevisionNote} onChange={e => setLeaderRevisionNote(e.target.value)} placeholder="Explain what needs to be fixed..." />
+                        <textarea className="w-full p-2 border rounded-lg text-sm" rows={3} value={leaderRevisionNote} onChange={e => setLeaderRevisionNote(e.target.value)} placeholder="Explain what needs to be fixed..." />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold mb-1">Attachment (optional)</label>
+                        <input
+                            type="file"
+                            className="w-full p-2 border rounded-lg text-sm bg-white"
+                            onChange={e => setReviewFile(e.target.files?.[0] || null)}
+                        />
+                        {reviewFile && <p className="text-xs text-green-600 mt-1">📎 {reviewFile.name}</p>}
                     </div>
                     <div className="flex justify-end gap-2 pt-4">
                         <button onClick={() => handleLeaderReview('revision')} className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-bold hover:bg-red-200">Request Revision</button>
@@ -763,6 +1000,56 @@ export const ProjectLeaderView = ({ currentProker: propProker, members, user, se
                 confirmLabel="Delete"
                 onConfirm={confirmDeleteSie}
                 onCancel={() => setShowDeleteConfirm({ isOpen: false, sieToDelete: null })}
+            />
+
+            {/* Edit Task Modal */}
+            <Modal isOpen={showEditTaskModal} onClose={() => { setShowEditTaskModal(false); setEditingTask(null); }} title="Edit Task">
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Task Title *</label>
+                        <input
+                            type="text" className="w-full p-2 border rounded-lg text-sm"
+                            value={editTaskForm.title} onChange={e => setEditTaskForm({ ...editTaskForm, title: e.target.value })}
+                            placeholder="Enter task title"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Deadline</label>
+                        <input
+                            type="date" className="w-full p-2 border rounded-lg text-sm bg-white"
+                            value={editTaskForm.deadline} onChange={e => setEditTaskForm({ ...editTaskForm, deadline: e.target.value })}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Description (optional)</label>
+                        <textarea
+                            className="w-full p-2 border rounded-lg text-sm" rows={3}
+                            value={editTaskForm.description} onChange={e => setEditTaskForm({ ...editTaskForm, description: e.target.value })}
+                            placeholder="Describe the task..."
+                        />
+                    </div>
+                    <div className="flex justify-end gap-2 pt-4">
+                        <button onClick={() => { setShowEditTaskModal(false); setEditingTask(null); }} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-bold">Cancel</button>
+                        <button
+                            onClick={handleEditTask}
+                            disabled={!editTaskForm.title}
+                            className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Save Changes
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Delete Task Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={showDeleteTaskConfirm.isOpen}
+                title="Delete Task"
+                message={`Are you sure you want to delete "${showDeleteTaskConfirm.taskToDelete?.title}"? This action cannot be undone.`}
+                type="danger"
+                confirmLabel="Delete"
+                onConfirm={handleDeleteTask}
+                onCancel={() => setShowDeleteTaskConfirm({ isOpen: false, taskToDelete: null, sieId: null })}
             />
 
             <div className="hidden">

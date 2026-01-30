@@ -40,41 +40,43 @@ export const BendaharaRabView = () => {
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <div className="bg-white p-4 md:p-6 rounded-xl border border-gray-200 shadow-sm">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">RAB Submission Review</h3>
-                <table className="w-full text-sm">
-                    <thead className="bg-gray-50 border-b border-gray-200">
-                        <tr>
-                            <th className="p-3 text-left">Program</th>
-                            <th className="p-3 text-left">Submitted By</th>
-                            <th className="p-3 text-right">Total Budget</th>
-                            <th className="p-3 text-center">Status</th>
-                            <th className="p-3 text-right">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rabs.map(r => (
-                            <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50">
-                                <td className="p-3 font-medium">{r.program?.title}</td>
-                                <td className="p-3 text-gray-500">{r.program?.treasurer_name || 'Bendahara'}</td>
-                                <td className="p-3 text-right font-bold">Rp {parseFloat(r.total_budget).toLocaleString()}</td>
-                                <td className="p-3 text-center">
-                                    <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${r.status === 'approved' ? 'bg-green-100 text-green-700' :
-                                        r.status === 'revision' ? 'bg-red-100 text-red-700' :
-                                            r.status === 'submitted' ? 'bg-yellow-100 text-yellow-700' :
-                                                'bg-gray-100 text-gray-600'
-                                        }`}>
-                                        {r.status}
-                                    </span>
-                                </td>
-                                <td className="p-3 text-right">
-                                    <button onClick={() => { setSelectedRab(r); setShowRabDetail(true); }} className="bg-blue-100 text-blue-600 hover:bg-blue-200 px-3 py-1 rounded text-xs font-bold">Review</button>
-                                </td>
+                <div className="overflow-x-auto -mx-4 md:mx-0">
+                    <table className="w-full text-sm min-w-[600px]">
+                        <thead className="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th className="p-3 text-left">Program</th>
+                                <th className="p-3 text-left">Submitted By</th>
+                                <th className="p-3 text-right">Total Budget</th>
+                                <th className="p-3 text-center">Status</th>
+                                <th className="p-3 text-right">Action</th>
                             </tr>
-                        ))}
-                        {rabs.length === 0 && <tr><td colSpan={5} className="p-4 text-center text-gray-500">No RAB submissions found.</td></tr>}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {rabs.map(r => (
+                                <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50">
+                                    <td className="p-3 font-medium">{r.program?.title}</td>
+                                    <td className="p-3 text-gray-500">{r.program?.treasurer_name || 'Bendahara'}</td>
+                                    <td className="p-3 text-right font-bold">Rp {parseFloat(r.total_budget).toLocaleString()}</td>
+                                    <td className="p-3 text-center">
+                                        <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${r.status === 'approved' ? 'bg-green-100 text-green-700' :
+                                            r.status === 'revision' ? 'bg-red-100 text-red-700' :
+                                                r.status === 'submitted' ? 'bg-yellow-100 text-yellow-700' :
+                                                    'bg-gray-100 text-gray-600'
+                                            }`}>
+                                            {r.status}
+                                        </span>
+                                    </td>
+                                    <td className="p-3 text-right">
+                                        <button onClick={() => { setSelectedRab(r); setShowRabDetail(true); }} className="bg-blue-100 text-blue-600 hover:bg-blue-200 px-3 py-1 rounded text-xs font-bold">Review</button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {rabs.length === 0 && <tr><td colSpan={5} className="p-4 text-center text-gray-500">No RAB submissions found.</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {/* RAB Detail Modal */}

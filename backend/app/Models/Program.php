@@ -21,11 +21,13 @@ class Program extends Model
         'deadline',
         'sies',
         'proposal_status',
-        'lpj_status'
+        'lpj_status',
+        'timeline'
     ];
 
     protected $casts = [
         'sies' => 'array',
+        'timeline' => 'array',
     ];
 
     public function tasks()

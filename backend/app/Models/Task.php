@@ -18,7 +18,8 @@ class Task extends Model
         'deadline',
         'submission_file',
         'submission_link',
-        'revision_note'
+        'revision_note',
+        'attachment_file'
     ];
 
     public function program()

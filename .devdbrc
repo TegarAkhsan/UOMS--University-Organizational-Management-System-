@@ -2,5 +2,9 @@
   {
     "type": "sqlite",
     "path": "c:\\Users\\USER\\Downloads\\UOMS PROJECT\\backend\\database\\database.sqlite"
+  },
+  {
+    "type": "sqlite",
+    "path": "c:\\laragon\\www\\UOMS PROJECT\\backend\\database\\database.sqlite"
   }
 ]

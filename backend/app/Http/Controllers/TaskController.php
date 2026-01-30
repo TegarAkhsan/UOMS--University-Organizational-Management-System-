@@ -30,7 +30,14 @@ class TaskController extends Controller
                 'deadline' => 'nullable|date',
                 'assigned_to' => 'nullable|string',
                 'status' => 'nullable|string',
+                'attachment_file' => 'nullable|file|max:10240',
             ]);
+
+            // Handle file upload
+            if ($request->hasFile('attachment_file')) {
+                $path = $request->file('attachment_file')->store('attachments', 'public');
+                $validated['attachment_file'] = $path;
+            }
 
             $task = Task::create($validated);
             $this->updateProgramProgress($task->program_id);

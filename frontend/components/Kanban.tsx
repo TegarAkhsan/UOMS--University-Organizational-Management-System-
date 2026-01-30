@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { Badge, Modal } from './ui/Shared';
-import { Calendar, ChevronRight, ChevronLeft, Paperclip, CheckCircle } from 'lucide-react';
+import { Calendar, ChevronRight, ChevronLeft, Paperclip, CheckCircle, UserPlus } from 'lucide-react';
 
-export const Kanban = ({ tasks, onUpdateTask, isEditable, customColumns, allowMarkDone = true, onTaskClick }: { tasks: any[], onUpdateTask: (task: any) => void, isEditable: boolean, customColumns?: any[], allowMarkDone?: boolean, onTaskClick?: (task: any) => void }) => {
+export const Kanban = ({ tasks, onUpdateTask, isEditable, customColumns, allowMarkDone = true, onTaskClick, onAssignClick }: { tasks: any[], onUpdateTask: (task: any) => void, isEditable: boolean, customColumns?: any[], allowMarkDone?: boolean, onTaskClick?: (task: any) => void, onAssignClick?: (task: any) => void }) => {
     const [selectedTask, setSelectedTask] = useState<any>(null);
 
     const columns = customColumns || [
@@ -55,10 +54,22 @@ export const Kanban = ({ tasks, onUpdateTask, isEditable, customColumns, allowMa
                             >
                                 <div className="flex justify-between items-start mb-2">
                                     <h4 className="font-bold text-gray-800 text-sm">{task.title || task.task}</h4>
+                                    {/* Show Assign button for unassigned tasks */}
+                                    {!task.assigned_to && onAssignClick && col.id === 'ready' && (
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); onAssignClick(task); }}
+                                            className="bg-orange-100 text-orange-600 px-2 py-1 rounded text-xs font-bold hover:bg-orange-200 flex items-center gap-1"
+                                        >
+                                            <UserPlus size={12} /> Assign
+                                        </button>
+                                    )}
                                 </div>
                                 <p className="text-xs text-gray-500 mb-3 line-clamp-2">
                                     {task.description || "No description provided."}
                                 </p>
+                                {task.assigned_to && (
+                                    <p className="text-xs text-blue-600 mb-2">→ {task.assigned_to}</p>
+                                )}
                                 <div className="flex justify-between items-center text-xs text-gray-400">
                                     <span className="flex items-center">
                                         <Calendar size={12} className="mr-1" /> {task.deadline || task.dueDate}
