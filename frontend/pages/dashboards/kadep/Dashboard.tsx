@@ -45,78 +45,67 @@ export const KadepDashboard = ({
 
     // -- HANDLERS --
 
-    const handleAddMember = (e: any) => {
-        e.preventDefault();
-        const payload = {
-            ...newMember,
-            department_id: myDeptCode,
-            dept: myDeptCode, // Legacy support
-            email: `${newMember.name.toLowerCase().replace(/\s+/g, '.')}@himaforticunesa.com`, // Auto-generate email
-            password: 'staffhimafortic', // Default password
-            points: 0,
-            violations: 0,
-            status: 'staff' // Default status
-        };
+    // -- HANDLERS --
+    // Legacy handlers removed. Logic moved to child components or replaced below.
 
-        client.post('/users', payload)
-            .then(res => {
-                // Manually inject 'dept' for frontend compatibility since backend might not return it immediately
-                const newStaff = { ...res.data, dept: myDeptCode };
-                setMembers([...members, newStaff]);
-                setView('dashboard');
-                setNewMember({ name: '', nim: '', role: 'Staff' });
-                alert('Staff added successfully!');
-            })
-            .catch(err => {
-                console.error(err);
-                alert('Failed to add staff. Please try again.');
-            });
+
+    // [NEW STATE] for Delete Project Modal
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [projectToDelete, setProjectToDelete] = useState<number | null>(null);
+
+    // [NEW STATE] for Delete Staff Modal
+    const [showStaffDeleteModal, setShowStaffDeleteModal] = useState(false);
+    const [staffToDelete, setStaffToDelete] = useState<number | null>(null);
+
+    // [NEW STATE] for Success Notification (Toast/Modal substitute)
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
+
+    // [MODIFIED] Delete Project Handler
+    const confirmDeleteProject = (id: number) => {
+        setProjectToDelete(id);
+        setShowDeleteModal(true);
     };
 
-    const handleCreateProject = (e: any) => {
-        e.preventDefault();
-        const payload = {
-            ...newProker,
-            leader_name: newProker.leader, // Map leader to leader_name for backend
-            department_id: myDeptCode, // Correct field for backend
-            department: myDeptCode,    // Legacy support
-            progress: 0
-        };
-
-        client.post('/programs', payload)
-            .then(res => {
-                // Manually inject department for immediate display
-                const newProject = { ...res.data, department: myDeptCode, department_id: myDeptCode };
-                setProkers([...prokers, newProject]);
-                setView('dashboard');
-                setNewProker({ title: '', description: '', objectives: '', benefits: '', impact: '', leader: '', deadline: '', status: 'On Progress' });
-                alert('Project created successfully!');
-            })
-            .catch(err => {
-                console.error(err);
-                alert('Failed to create project. Please try again.');
-            });
-    };
-
-    const handleDeleteStaff = (id: number) => {
-        if (confirm('Are you sure you want to delete this staff member?')) {
-            client.delete(`/users/${id}`)
+    const performDeleteProject = () => {
+        if (projectToDelete) {
+            client.delete(`/programs/${projectToDelete}`)
                 .then(() => {
-                    setMembers(members.filter((m: any) => m.id !== id));
-                    alert('Staff deleted successfully');
+                    setProkers(prokers.filter((p: any) => p.id !== projectToDelete));
+                    setShowDeleteModal(false);
+                    setProjectToDelete(null);
+                    setSuccessMessage('Project has been deleted successfully.');
+                    setShowSuccessModal(true);
                 })
-                .catch(err => console.error(err));
+                .catch(err => {
+                    console.error(err);
+                    alert('Failed to delete project.');
+                    setShowDeleteModal(false);
+                });
         }
     };
 
-    const handleDeleteProject = (id: number) => {
-        if (confirm('Are you sure you want to delete this project?')) {
-            client.delete(`/programs/${id}`)
+    // [MODIFIED] Delete Staff Handler
+    const handleDeleteStaff = (id: number) => {
+        setStaffToDelete(id);
+        setShowStaffDeleteModal(true);
+    };
+
+    const performDeleteStaff = () => {
+        if (staffToDelete) {
+            client.delete(`/users/${staffToDelete}`)
                 .then(() => {
-                    setProkers(prokers.filter((p: any) => p.id !== id));
-                    alert('Project deleted successfully');
+                    setMembers(members.filter((m: any) => m.id !== staffToDelete));
+                    setShowStaffDeleteModal(false);
+                    setStaffToDelete(null);
+                    setSuccessMessage('Staff member removed successfully.');
+                    setShowSuccessModal(true);
                 })
-                .catch(err => console.error(err));
+                .catch(err => {
+                    console.error(err);
+                    alert('Failed to delete staff member.');
+                    setShowStaffDeleteModal(false);
+                });
         }
     };
 
@@ -144,11 +133,12 @@ export const KadepDashboard = ({
                 user={user}
                 onLogout={onLogout}
                 setView={setView}
-                handleCreateProject={handleCreateProject}
+                setProkers={setProkers} // [UPDATED] Pass setter
                 newProker={newProker}
                 setNewProker={setNewProker}
                 myDept={myDept}
                 deptMembers={deptMembers}
+                allProkers={prokers}
             />
         );
     }
@@ -159,9 +149,9 @@ export const KadepDashboard = ({
                 user={user}
                 onLogout={onLogout}
                 setView={setView}
-                handleAddMember={handleAddMember}
-                newMember={newMember}
-                setNewMember={setNewMember}
+                allMembers={members}
+                setMembers={setMembers}
+                myDeptCode={myDeptCode}
             />
         );
     }
@@ -174,109 +164,244 @@ export const KadepDashboard = ({
                 setView={setView}
                 selectedItem={selectedItem}
                 onUpdateProject={handleUpdateProject}
-                members={deptMembers}
+                members={members}
+                myDeptCode={myDeptCode}
             />
         );
     }
 
     // DASHBOARD VIEW
     return (
-        <div className="min-h-screen bg-gray-50 animate-fade-in">
-            <DashboardHeader user={user} onLogout={onLogout} />
-            <main className="px-8 pb-8 max-w-7xl mx-auto space-y-10">
+        <div className="min-h-screen bg-gray-50 flex flex-col md:pb-8">
+            <div className="sticky top-0 z-50">
+                <DashboardHeader user={user} onLogout={onLogout} />
+            </div>
+
+            {/* Success Modal (Generic) */}
+            {showSuccessModal && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-scale-in">
+                        <div className="p-6 text-center">
+                            <div className="mx-auto bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mb-4">
+                                <Users size={32} className="text-green-600" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900">Success</h3>
+                            <p className="text-gray-500 mt-2 text-sm">{successMessage}</p>
+                            <button
+                                onClick={() => setShowSuccessModal(false)}
+                                className="mt-6 w-full bg-gray-900 text-white py-3 rounded-xl font-bold hover:bg-gray-800 transition-all"
+                            >
+                                OK
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Project Modal */}
+            {showDeleteModal && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-scale-in">
+                        <div className="flex flex-col items-center text-center">
+                            <div className="bg-red-100 p-4 rounded-full mb-4">
+                                <Trash2 size={32} className="text-red-500" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Project?</h3>
+                            <p className="text-gray-500 text-sm mb-6">Are you sure you want to remove this project? This action cannot be undone.</p>
+                            <div className="flex gap-3 w-full">
+                                <button
+                                    onClick={() => setShowDeleteModal(false)}
+                                    className="flex-1 py-2.5 px-4 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={performDeleteProject}
+                                    className="flex-1 py-2.5 px-4 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 transition-colors"
+                                >
+                                    Yes, Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Staff Modal */}
+            {showStaffDeleteModal && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-scale-in">
+                        <div className="flex flex-col items-center text-center">
+                            <div className="bg-red-100 p-4 rounded-full mb-4">
+                                <Users size={32} className="text-red-500" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Remove Staff?</h3>
+                            <p className="text-gray-500 text-sm mb-6">Are you sure you want to remove this member? This action cannot be undone.</p>
+                            <div className="flex gap-3 w-full">
+                                <button
+                                    onClick={() => setShowStaffDeleteModal(false)}
+                                    className="flex-1 py-2.5 px-4 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={performDeleteStaff}
+                                    className="flex-1 py-2.5 px-4 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 transition-colors"
+                                >
+                                    Yes, Remove
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <main className="flex-1 px-4 md:px-8 py-8 max-w-7xl mx-auto space-y-8 w-full">
+                {/* ... (rest of the code remains same, just ensuring context is correct) ... */}
+
 
                 {/* Department Header Card */}
-                <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-lg shadow-blue-50 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-8 opacity-5">
-                        <Briefcase size={150} />
-                    </div>
-                    <div className="flex justify-between items-start mb-6">
-                        <div>
-                            <h1 className="text-3xl font-extrabold text-gray-900 mb-2">{myDept?.fullName || 'Department'}</h1>
-                            <div className="flex items-center gap-4 text-sm text-gray-500">
-                                <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full font-bold">ID: {myDept?.id}</span>
-                                <span className="flex items-center gap-1"><Users size={16} /> {deptMembers.length} Members</span>
-                                <span className="flex items-center gap-1"><Briefcase size={16} /> {deptProkers.length} Projects</span>
+                <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 relative overflow-hidden">
+                    {/* Simplified Header Layout */}
+                    <div className="flex flex-col md:flex-row justify-between items-start gap-8 relative z-10">
+                        <div className="space-y-4 max-w-2xl">
+                            <div className="bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full inline-block mb-2">
+                                ID: {myDept?.id}
+                            </div>
+                            <h1 className="text-3xl md:text-5xl font-black text-gray-900 tracking-tight leading-tight">
+                                {myDept?.fullName || 'Department'}
+                            </h1>
+
+                            {/* Head of Dept */}
+                            <div className="flex items-center gap-4 pt-2">
+                                <img src={`https://ui-avatars.com/api/?name=${myDept?.head}&background=0D8ABC&color=fff`} alt={myDept?.head} className="w-12 h-12 rounded-full border-2 border-white shadow-sm" />
+                                <div>
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Head of Department</p>
+                                    <p className="font-bold text-gray-900 text-lg">{myDept?.head}</p>
+                                </div>
                             </div>
                         </div>
-                        <div className="flex gap-4">
+
+                        {/* Stats & Refresh */}
+                        <div className="flex flex-row md:flex-col gap-3 w-full md:w-auto min-w-[140px]">
                             {refreshData && (
-                                <button onClick={refreshData} className="bg-gray-100 hover:bg-gray-200 text-gray-700 p-4 rounded-xl flex flex-col items-center justify-center min-w-[80px] transition-colors">
-                                    <RefreshCw size={24} className="mb-1" />
-                                    <span className="text-xs font-bold">Refresh</span>
+                                <button onClick={refreshData} className="group flex items-center justify-center gap-2 w-full bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-600 rounded-xl py-2 px-3 transition-all duration-200 shadow-sm text-xs font-bold uppercase tracking-wider">
+                                    <RefreshCw size={14} className="group-hover:rotate-180 transition-transform duration-500" />
+                                    Refresh Data
                                 </button>
                             )}
-                            <div className="bg-blue-50 p-4 rounded-xl text-center min-w-[120px]">
-                                <p className="text-xs font-bold text-blue-600 uppercase mb-1">Active Prokers</p>
-                                <p className="text-3xl font-bold text-blue-800">{activeProkersCount}</p>
-                            </div>
-                            <div className="bg-green-50 p-4 rounded-xl text-center min-w-[120px]">
-                                <p className="text-xs font-bold text-green-600 uppercase mb-1">Completed</p>
-                                <p className="text-3xl font-bold text-green-800">{completedProkersCount}</p>
+
+                            <div className="grid grid-cols-2 gap-3 mt-1">
+                                <div className="bg-blue-50/50 border border-blue-100 p-3 rounded-2xl text-center">
+                                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Active</p>
+                                    <p className="text-2xl font-black text-gray-900">{activeProkersCount}</p>
+                                </div>
+                                <div className="bg-green-50/50 border border-green-100 p-3 rounded-2xl text-center">
+                                    <p className="text-[10px] font-black text-green-400 uppercase tracking-widest mb-1">Done</p>
+                                    <p className="text-2xl font-black text-gray-900">{completedProkersCount}</p>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 border-t border-gray-100 pt-6">
+                    {/* Function & Duties (Always visible on large screens, collapsible details) */}
+                    <div className="mt-8 pt-8 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div>
-                            <p className="text-xs font-bold text-gray-400 uppercase mb-2 flex items-center"><Users size={12} className="mr-1" /> Head of Department</p>
-                            <p className="font-bold text-gray-900">{myDept?.head}</p>
+                            <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Function & Duties</h4>
+                            <p className="text-gray-600 leading-relaxed text-sm">
+                                {myDeptTexts.fungsi || 'No function description available.'}
+                            </p>
                         </div>
-                        <div className="md:col-span-2 space-y-4">
-                            <div>
-                                <p className="text-xs font-bold text-gray-400 uppercase mb-2 flex items-center"><AlertCircle size={12} className="mr-1" /> Function</p>
-                                <p className="text-sm text-gray-700 leading-relaxed">{myDeptTexts.fungsi || 'No description available.'}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs font-bold text-gray-400 uppercase mb-2 flex items-center"><RefreshCw size={12} className="mr-1" /> Work Directions (Arahan Kerja)</p>
-                                <ul className="text-sm text-gray-700 space-y-1 list-disc pl-4">
-                                    {myDeptTexts.arahan.length > 0 ? (
-                                        myDeptTexts.arahan.map((arahan: string, idx: number) => (
-                                            <li key={idx}>{arahan}</li>
-                                        ))
-                                    ) : (
-                                        <li>No specific instructions available.</li>
-                                    )}
-                                </ul>
-                            </div>
+                        <div>
+                            <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Work Directions</h4>
+                            <ul className="text-gray-600 text-sm space-y-2">
+                                {myDeptTexts.arahan.length > 0 ? (
+                                    myDeptTexts.arahan.map((arahan: string, idx: number) => (
+                                        <li key={idx} className="flex items-start gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 shrink-0" />
+                                            <span>{arahan}</span>
+                                        </li>
+                                    ))
+                                ) : (
+                                    <li className="italic text-gray-400">No specific instructions available.</li>
+                                )}
+                            </ul>
                         </div>
                     </div>
                 </div>
 
                 {/* Project Management Section */}
                 <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                        <h3 className="text-xl font-bold text-gray-900 flex items-center"><Briefcase className="mr-2 text-blue-600" /> Project Management</h3>
-                        <button onClick={() => setView('createProject')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold text-sm shadow-md flex items-center transition-colors">
-                            <Plus size={16} className="mr-2" /> Create Project
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <h3 className="text-xl font-bold text-gray-900 flex items-center">Projects & Programs</h3>
+                        <button onClick={() => setView('createProject')} className="w-full md:w-auto bg-gray-900 hover:bg-black text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-gray-200 flex items-center justify-center transition-all transform hover:scale-[1.02]">
+                            <Plus size={18} className="mr-2" /> Create or Assign Project
                         </button>
                     </div>
-                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+
+                    {/* Mobile Card View */}
+                    <div className="grid grid-cols-1 gap-4 md:hidden">
+                        {deptProkers.map((p: any) => (
+                            <div key={p.id} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <Badge status={p.status} />
+                                        <h4 className="font-bold text-gray-900 text-lg mt-2 leading-tight">{p.title}</h4>
+                                        <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                            Leader: <span className="font-medium text-gray-700">{p.leader_name || p.leader?.name || '-'}</span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 border-t border-gray-50 pt-3 mt-1">
+                                    <button
+                                        onClick={() => { setSelectedItem(p); setView('projectDetail'); }}
+                                        className="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-900 py-2.5 rounded-xl text-xs font-bold transition-colors"
+                                    >
+                                        View Details
+                                    </button>
+                                    <button
+                                        onClick={() => confirmDeleteProject(p.id)}
+                                        className="p-2.5 bg-white border border-gray-100 text-red-500 hover:bg-red-50 rounded-xl transition-colors shadow-sm"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                        {deptProkers.length === 0 && (
+                            <div className="text-center py-12 text-gray-400 bg-white rounded-2xl border border-dashed border-gray-200">
+                                <p>No projects initiated yet.</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                         <table className="w-full">
-                            <thead className="bg-gray-50 border-b border-gray-100">
+                            <thead className="bg-gray-50/50 border-b border-gray-100">
                                 <tr>
-                                    <th className="text-left py-4 px-6 text-sm font-bold text-gray-600 uppercase">Project Name</th>
-                                    <th className="text-left py-4 px-6 text-sm font-bold text-gray-600 uppercase">Status</th>
-                                    <th className="text-left py-4 px-6 text-sm font-bold text-gray-600 uppercase">Leader</th>
-                                    <th className="text-right py-4 px-6 text-sm font-bold text-gray-600 uppercase">Action</th>
+                                    <th className="text-left py-5 px-8 text-xs font-bold text-gray-400 uppercase tracking-wider">Project Name</th>
+                                    <th className="text-left py-5 px-8 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                                    <th className="text-left py-5 px-8 text-xs font-bold text-gray-400 uppercase tracking-wider">Leader</th>
+                                    <th className="text-right py-5 px-8 text-xs font-bold text-gray-400 uppercase tracking-wider">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {deptProkers.map((p: any) => (
-                                    <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors group">
-                                        <td className="py-4 px-6 font-medium text-gray-900">{p.title}</td>
-                                        <td className="py-4 px-6"><Badge status={p.status} /></td>
-                                        <td className="py-4 px-6 text-gray-600 text-sm">{p.leader_name || p.leader?.name || p.leader || '-'}</td>
-                                        <td className="py-4 px-6 text-right flex justify-end gap-2">
+                                    <tr key={p.id} className="border-b border-gray-50 hover:bg-blue-50/30 transition-colors group">
+                                        <td className="py-5 px-8 font-bold text-gray-900">{p.title}</td>
+                                        <td className="py-5 px-8"><Badge status={p.status} /></td>
+                                        <td className="py-5 px-8 text-gray-600 text-sm font-medium">{p.leader_name || p.leader?.name || p.leader || '-'}</td>
+                                        <td className="py-5 px-8 text-right flex justify-end gap-2">
                                             <button
                                                 onClick={() => { setSelectedItem(p); setView('projectDetail'); }}
-                                                className="text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg font-bold text-xs shadow-sm transition-colors"
+                                                className="text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 px-4 py-2 rounded-lg font-bold text-xs shadow-sm transition-all"
                                             >
-                                                Lihat Project
+                                                Details
                                             </button>
                                             <button
-                                                onClick={() => handleDeleteProject(p.id)}
-                                                className="text-white bg-red-500 hover:bg-red-600 px-3 py-2 rounded-lg font-bold text-xs shadow-sm transition-colors"
+                                                onClick={() => confirmDeleteProject(p.id)}
+                                                className="text-red-500 bg-white border border-gray-200 hover:bg-red-50 hover:border-red-100 px-3 py-2 rounded-lg font-bold text-xs shadow-sm transition-all"
                                             >
                                                 <Trash2 size={16} />
                                             </button>
@@ -285,12 +410,8 @@ export const KadepDashboard = ({
                                 ))}
                                 {deptProkers.length === 0 && (
                                     <tr>
-                                        <td colSpan={4} className="py-12 text-center">
-                                            <div className="flex flex-col items-center justify-center text-gray-400">
-                                                <Briefcase size={48} className="mb-4 opacity-20" />
-                                                <p className="font-medium">No projects found.</p>
-                                                <p className="text-sm">Create a new project to get started.</p>
-                                            </div>
+                                        <td colSpan={4} className="py-16 text-center text-gray-400 italic">
+                                            No projects found. Start by creating one.
                                         </td>
                                     </tr>
                                 )}
@@ -301,44 +422,44 @@ export const KadepDashboard = ({
 
                 {/* Staff Management Section */}
                 <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                        <h3 className="text-xl font-bold text-gray-900 flex items-center"><Users className="mr-2 text-green-600" /> Staff Management</h3>
-                        <button onClick={() => setView('addStaff')} className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl font-bold text-sm shadow-sm flex items-center transition-colors">
-                            <Plus size={16} className="mr-2" /> Add Staff
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <h3 className="text-xl font-bold text-gray-900 flex items-center">Department Members</h3>
+                        <button onClick={() => setView('addStaff')} className="w-full md:w-auto bg-white border border-gray-200 hover:bg-gray-50 text-gray-900 px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm flex items-center justify-center transition-colors">
+                            <Plus size={18} className="mr-2" /> Add Staff
                         </button>
                     </div>
 
                     {deptMembers.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                             {deptMembers.map((m: any) => (
-                                <div key={m.id} className="bg-white p-6 rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer flex items-center gap-4 group" onClick={() => { setSelectedItem(m); setView('staffDetail'); }}>
-                                    <img src={m.image} alt={m.name} className="w-12 h-12 rounded-full border-2 border-gray-100 group-hover:border-blue-200 transition-colors" />
+                                <div key={m.id} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all cursor-pointer flex items-center gap-5 group" onClick={() => { setSelectedItem(m); setView('staffDetail'); }}>
+                                    <img src={m.image} alt={m.name} className="w-14 h-14 rounded-full border-2 border-gray-50 group-hover:border-blue-100 transition-colors object-cover" />
                                     <div className="flex-1 min-w-0">
-                                        <h4 className="font-bold text-gray-900 truncate">{m.name}</h4>
-                                        <p className="text-xs text-gray-500">{m.nim}</p>
+                                        <h4 className="font-bold text-gray-900 truncate text-base">{m.name}</h4>
+                                        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mt-0.5">{m.role || 'Staff'}</p>
+                                        <p className="text-xs text-gray-400 mt-1">{m.nim}</p>
                                     </div>
                                     <div className="flex items-center gap-1">
                                         <button
                                             onClick={(e) => { e.stopPropagation(); handleDeleteStaff(m.id); }}
-                                            className="p-2 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 transition-colors"
+                                            className="p-2.5 text-gray-300 hover:text-red-500 rounded-xl hover:bg-red-50 transition-colors"
                                             title="Delete Staff"
                                         >
-                                            <Trash2 size={16} />
+                                            <Trash2 size={18} />
                                         </button>
-                                        <ArrowLeft size={16} className="text-gray-300 group-hover:text-blue-500 rotate-180 transition-colors" />
+                                        <ArrowLeft size={18} className="text-gray-200 group-hover:text-blue-500 rotate-180 transition-colors hidden md:block" />
                                     </div>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center flex flex-col items-center justify-center">
+                        <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-12 text-center flex flex-col items-center justify-center">
                             <div className="bg-gray-50 p-4 rounded-full mb-4">
-                                <AlertCircle size={48} className="text-gray-400" />
+                                <Users size={32} className="text-gray-300" />
                             </div>
-                            <h3 className="text-lg font-bold text-gray-900 mb-2">Staff Not Found</h3>
-                            <p className="text-gray-500 max-w-md mx-auto">
-                                There are no staff members assigned to this department yet.
-                                Please contact the Super Admin (Kahima) or add staff manually.
+                            <h3 className="text-lg font-bold text-gray-900 mb-1">No Staff Members</h3>
+                            <p className="text-gray-400 text-sm max-w-xs mx-auto">
+                                Your department roster is empty. Add new members to get started.
                             </p>
                         </div>
                     )}

@@ -13,22 +13,52 @@ export const SDM = ({ members, setMembers, prokers, user }: { members: any[], se
     const [selectedMember, setSelectedMember] = useState<any>(null);
     const [newMember, setNewMember] = useState<any>({ name: '', nim: '', dept: 'PSDM', role: 'Staff', avatar: null });
 
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [createdCredentials, setCreatedCredentials] = useState({ email: '', password: '' });
+
     // Violation State
     const [showViolationModal, setShowViolationModal] = useState(false);
-    const [violationData, setViolationData] = useState({ memberId: '', reason: '', deduction: 1 }); // Default deduction to 1 point = 1 violation count in this context if mapped 1:1, but user asked for "points violation"
+    const [violationData, setViolationData] = useState({ memberId: '', reason: '', deduction: 1 });
 
     // Check if user has access to Violation Manager
     const canManageViolations = (user && user.status === 'superadmin') || (user && ['Kahima', 'Wakil Kahima', 'Sekretaris Umum', 'Sekretaris 1', 'Sekretaris 2', 'Ketua Departemen'].includes(user.role)) || (user && user.dept === 'PSDM');
 
     const handleAddMember = (e: any) => {
         e.preventDefault();
+
+        // Custom Email Generation
+        // Format: [role][dept][year]@himaforticunesa.com
+        const normalizeRole = (r: string) => r.toLowerCase().replace(/\s+/g, '');
+        const normalizeDept = (d: string) => d.toLowerCase().replace(/\s+/g, '');
+        const year = new Date().getFullYear();
+
+        let emailPrefix = '';
+        if (newMember.role === 'Ketua Departemen') {
+            emailPrefix = `kadep${normalizeDept(newMember.dept)}${year}`;
+        } else if (newMember.role === 'Staff') {
+            // Staff emails usually use name or NIM, but user asked for "kadeppsdm2026" example. 
+            // For staff, we might keep it simple or follow a pattern. Let's use name for staff to avoid collision.
+            // Or if user wants STRICT pattern for all:
+            // Let's stick to user request example "kadeppsdm2026" implies role+dept+year. 
+            // For unique staff, maybe staff[name.split[0]][dept][year]? 
+            // Let's try: staff[name_first_word][dept][year]
+            const firstName = newMember.name.split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+            emailPrefix = `staff${firstName}${normalizeDept(newMember.dept)}${year}`;
+        } else {
+            // Fallback for other roles (Kahima etc)
+            emailPrefix = `${normalizeRole(newMember.role)}${year}`;
+        }
+
+        const generatedEmail = `${emailPrefix}@himaforticunesa.com`;
+        const generatedPassword = '123456'; // Default password
+
         const formData = new FormData();
         formData.append('name', newMember.name);
         formData.append('nim', newMember.nim);
         formData.append('department_id', newMember.dept);
         formData.append('role', newMember.role);
-        formData.append('email', `${newMember.nim}@student.telkomuniversity.ac.id`);
-        formData.append('password', '123456');
+        formData.append('email', generatedEmail);
+        formData.append('password', generatedPassword);
         if (newMember.avatar) {
             formData.append('avatar', newMember.avatar);
         }
@@ -38,11 +68,21 @@ export const SDM = ({ members, setMembers, prokers, user }: { members: any[], se
         })
             .then(res => {
                 setMembers([...members, res.data]);
-                setView('list');
+                // Close Create View first? Or show modal on top? Show modal then redirect.
+                // We'll keep Create View open or switch to list? Let's stay to show modal.
+                setCreatedCredentials({ email: generatedEmail, password: generatedPassword });
+                setShowSuccessModal(true);
                 setNewMember({ name: '', nim: '', dept: 'PSDM', role: 'Staff', avatar: null });
-                alert('Member added successfully');
             })
-            .catch(err => console.error(err));
+            .catch(err => {
+                console.error(err);
+                if (err.response && err.response.status === 401) {
+                    alert('Session expired. Please login again.');
+                    window.location.reload();
+                } else {
+                    alert('Failed to add member: ' + (err.response?.data?.message || err.message));
+                }
+            });
     };
 
 
@@ -55,7 +95,6 @@ export const SDM = ({ members, setMembers, prokers, user }: { members: any[], se
         if (!violationData.memberId) return;
 
         console.log('Submitting violation for:', violationData.memberId);
-        // Fix: Compare as strings to handle number/string mismatch
         const memberToUpdate = members.find(m => String(m.id) === String(violationData.memberId));
         if (!memberToUpdate) {
             console.error('Member not found in list:', violationData.memberId);
@@ -125,7 +164,56 @@ export const SDM = ({ members, setMembers, prokers, user }: { members: any[], se
     // CREATE VIEW
     if (view === 'create') {
         return (
-            <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-10">
+            <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-10 relative">
+                {/* Success Modal */}
+                <Modal
+                    isOpen={showSuccessModal}
+                    onClose={() => { setShowSuccessModal(false); setView('list'); }}
+                    title="Member Added Successfully"
+                >
+                    <div className="space-y-4 text-center">
+                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            {/* Reusing Check icon manually since Badge is a component */}
+                            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                        </div>
+                        <p className="text-gray-600">The new member has been created. Please share these credentials securely.</p>
+
+                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 text-left space-y-3">
+                            <div>
+                                <label className="text-xs font-bold text-gray-400 uppercase">Email</label>
+                                <div className="flex justify-between items-center">
+                                    <code className="text-gray-900 font-mono font-bold text-lg">{createdCredentials.email}</code>
+                                    <button
+                                        onClick={() => navigator.clipboard.writeText(createdCredentials.email)}
+                                        className="text-blue-500 hover:text-blue-700 text-xs font-bold"
+                                    >
+                                        Copy
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="border-t border-gray-200 pt-2">
+                                <label className="text-xs font-bold text-gray-400 uppercase">Password</label>
+                                <div className="flex justify-between items-center">
+                                    <code className="text-gray-900 font-mono font-bold text-lg">{createdCredentials.password}</code>
+                                    <button
+                                        onClick={() => navigator.clipboard.writeText(createdCredentials.password)}
+                                        className="text-blue-500 hover:text-blue-700 text-xs font-bold"
+                                    >
+                                        Copy
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={() => { setShowSuccessModal(false); setView('list'); }}
+                            className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 hover:shadow-lg transition-all"
+                        >
+                            Done
+                        </button>
+                    </div>
+                </Modal>
+
                 <div className="flex items-center space-x-4 mb-6">
                     <button
                         onClick={() => setView('list')}

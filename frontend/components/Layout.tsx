@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
-import { Search, Bell, LogOut } from 'lucide-react';
+import { Search, Bell, LogOut, Menu } from 'lucide-react';
 
 export const Layout = ({ user, onLogout }: { user: any, onLogout: () => void }) => {
     const location = useLocation();
     const navigate = useNavigate();
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     // Helper to determine active tab based on path
     const getActiveTab = () => {
@@ -36,15 +37,24 @@ export const Layout = ({ user, onLogout }: { user: any, onLogout: () => void }) 
 
     return (
         <div className="flex h-screen bg-gray-50 font-sans text-gray-900">
-            <Sidebar activeTab={activeTab} />
+            <Sidebar activeTab={activeTab} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col overflow-hidden">
                 {/* Header */}
-                <header className="h-16 bg-white border-b border-gray-200 flex justify-between items-center px-6">
-                    <div className="flex-1"></div> {/* Spacer to push right */}
+                <header className="h-16 bg-white border-b border-gray-200 flex justify-between items-center px-4 md:px-6">
+                    <div className="flex items-center gap-4 flex-1">
+                        {/* Mobile Menu Button */}
+                        <button
+                            className="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                            onClick={() => setIsSidebarOpen(true)}
+                        >
+                            <Menu size={24} />
+                        </button>
+                        <div className="flex-1"></div> {/* Spacer to push right */}
+                    </div>
                     <div className="flex items-center space-x-4">
-                        <div className="relative w-64">
+                        <div className="relative w-64 hidden lg:block">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-500" size={20} />
                             <input
                                 type="text"
@@ -79,7 +89,7 @@ export const Layout = ({ user, onLogout }: { user: any, onLogout: () => void }) 
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-y-auto p-8">
+                <main className="flex-1 overflow-y-auto p-3 md:p-8">
                     <Outlet />
                 </main>
             </div>

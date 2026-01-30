@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Briefcase, ArrowLeft, Calendar, Users, ListTodo, LayoutDashboard, CheckSquare, Folder, ChevronDown, ChevronRight, Menu, LogOut, User, Clock, Settings } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Briefcase, ArrowLeft, Calendar, Users, ListTodo, LayoutDashboard, CheckSquare, Folder, ChevronDown, ChevronRight, Menu, LogOut, User, Clock, Settings, X } from 'lucide-react';
 import { DashboardHeader } from '../../../components/DashboardHeader';
 import { StaffTaskView } from './views/StaffTaskView';
 import { ProjectLeaderView } from '../ketupel/Dashboard';
@@ -12,7 +12,8 @@ export const StaffDashboard = ({ user, onLogout, members, prokers, setProkers, r
     const [activeView, setActiveView] = useState('my-tasks-kanban');
     const [expandedMenus, setExpandedMenus] = useState<string[]>(['my-tasks', 'manage-project']);
     const [selectedProkerDetail, setSelectedProkerDetail] = useState<any>(null);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    // Default to closed on mobile (screen width < 768px)
+    const [isSidebarOpen, setIsSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
 
     // Check roles for specific projects
     const managedProkers = prokers.filter((p: any) => p.leader_name === user.name || p.leader === user.name);
@@ -48,6 +49,15 @@ export const StaffDashboard = ({ user, onLogout, members, prokers, setProkers, r
         setExpandedMenus(prev =>
             prev.includes(menuId) ? prev.filter(id => id !== menuId) : [...prev, menuId]
         );
+    };
+
+    // Helper to change view and auto-close sidebar on mobile
+    const handleViewChange = (view: string) => {
+        setActiveView(view);
+        // Close sidebar on mobile (screen width < 768px)
+        if (typeof window !== 'undefined' && window.innerWidth < 768) {
+            setIsSidebarOpen(false);
+        }
     };
 
     // --- RENDER PROKER DETAIL (FULL PAGE SIMULATION for "My Proker" click) ---
@@ -117,6 +127,14 @@ export const StaffDashboard = ({ user, onLogout, members, prokers, setProkers, r
     // --- MAIN DASHBOARD RENDER ---
     return (
         <div className="min-h-screen bg-gray-50 flex">
+            {/* MOBILE OVERLAY */}
+            {isSidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+
             {/* SIDEBAR */}
             <aside className={`bg-white border-r border-gray-200 fixed inset-y-0 left-0 z-50 w-64 transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static lg:inset-0`}>
                 <div className="p-6 border-b border-gray-100 flex items-center justify-between">
@@ -146,13 +164,13 @@ export const StaffDashboard = ({ user, onLogout, members, prokers, setProkers, r
                         {expandedMenus.includes('my-tasks') && (
                             <div className="ml-9 mt-1 space-y-1">
                                 <button
-                                    onClick={() => setActiveView('my-tasks-kanban')}
+                                    onClick={() => handleViewChange('my-tasks-kanban')}
                                     className={`w-full text-left p-2 text-sm rounded-lg transition-colors ${activeView === 'my-tasks-kanban' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-500 hover:text-gray-900'}`}
                                 >
                                     My Task & Kanban
                                 </button>
                                 <button
-                                    onClick={() => setActiveView('my-proker')}
+                                    onClick={() => handleViewChange('my-proker')}
                                     className={`w-full text-left p-2 text-sm rounded-lg transition-colors ${activeView === 'my-proker' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-500 hover:text-gray-900'}`}
                                 >
                                     My Proker
@@ -178,19 +196,19 @@ export const StaffDashboard = ({ user, onLogout, members, prokers, setProkers, r
                             {expandedMenus.includes('manage-project') && (
                                 <div className="ml-9 mt-1 space-y-1">
                                     <button
-                                        onClick={() => setActiveView('manage-project-overview')}
+                                        onClick={() => handleViewChange('manage-project-overview')}
                                         className={`w-full text-left p-2 text-sm rounded-lg transition-colors flex items-center gap-2 ${activeView === 'manage-project-overview' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-500 hover:text-gray-900'}`}
                                     >
                                         <LayoutDashboard size={14} /> Overview
                                     </button>
                                     <button
-                                        onClick={() => setActiveView('manage-project-timeline')}
+                                        onClick={() => handleViewChange('manage-project-timeline')}
                                         className={`w-full text-left p-2 text-sm rounded-lg transition-colors flex items-center gap-2 ${activeView === 'manage-project-timeline' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-500 hover:text-gray-900'}`}
                                     >
                                         <Clock size={14} /> Timeline
                                     </button>
                                     <button
-                                        onClick={() => setActiveView('manage-project-members')}
+                                        onClick={() => handleViewChange('manage-project-members')}
                                         className={`w-full text-left p-2 text-sm rounded-lg transition-colors flex items-center gap-2 ${activeView === 'manage-project-members' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-500 hover:text-gray-900'}`}
                                     >
                                         <Users size={14} /> Members & Sie
@@ -203,7 +221,7 @@ export const StaffDashboard = ({ user, onLogout, members, prokers, setProkers, r
                     {/* Other Roles */}
                     {isCoordinator && (
                         <button
-                            onClick={() => setActiveView('coordinator-view')}
+                            onClick={() => handleViewChange('coordinator-view')}
                             className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors font-medium ${activeView === 'coordinator-view' ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'}`}
                         >
                             <Users size={18} />
@@ -213,7 +231,7 @@ export const StaffDashboard = ({ user, onLogout, members, prokers, setProkers, r
 
                     {isSecretary && (
                         <button
-                            onClick={() => setActiveView('secretary-view')}
+                            onClick={() => handleViewChange('secretary-view')}
                             className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors font-medium ${activeView === 'secretary-view' ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'}`}
                         >
                             <Folder size={18} />
@@ -223,7 +241,7 @@ export const StaffDashboard = ({ user, onLogout, members, prokers, setProkers, r
 
                     {isTreasurer && (
                         <button
-                            onClick={() => setActiveView('treasurer-view')}
+                            onClick={() => handleViewChange('treasurer-view')}
                             className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors font-medium ${activeView === 'treasurer-view' ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'}`}
                         >
                             <Briefcase size={18} />

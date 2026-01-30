@@ -126,12 +126,12 @@ export const Surat = () => {
 
             {/* Search & Filters */}
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                <div className="flex bg-gray-100 p-1 rounded-lg">
+                <div className="flex gap-2 overflow-x-auto pb-2 w-full md:w-auto md:pb-0 bg-gray-100 p-1 rounded-lg">
                     {['Masuk', 'Keluar', 'Pending', 'Requests'].map((tab: any) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
-                            className={`px-6 py-2 rounded-md text-sm font-medium transition-all ${activeTab === tab
+                            className={`whitespace-nowrap px-6 py-2 rounded-md text-sm font-medium transition-all ${activeTab === tab
                                 ? 'bg-white text-blue-600 shadow-sm'
                                 : 'text-gray-500 hover:text-gray-700'
                                 }`}
@@ -179,87 +179,89 @@ export const Surat = () => {
 
             {/* Table */}
             <Card className="p-0 overflow-hidden border border-gray-200 rounded-xl">
-                <table className="w-full">
-                    <thead className="bg-gray-50 border-b border-gray-100">
-                        <tr>
-                            {activeTab === 'Requests' ? (
-                                <>
-                                    <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">Title</th>
-                                    <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">Description</th>
-                                    <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">Status</th>
-                                    <th className="text-right py-4 px-6 text-xs font-bold text-gray-500 uppercase">Download</th>
-                                </>
-                            ) : (
-                                <>
-                                    <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">No. Surat</th>
-                                    <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">Perihal</th>
-                                    <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">{activeTab === 'Masuk' ? 'Pengirim' : 'Tujuan'}</th>
-                                    <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">Tanggal</th>
-                                    <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">Status</th>
-                                    <th className="text-right py-4 px-6 text-xs font-bold text-gray-500 uppercase">Aksi</th>
-                                </>
-                            )}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {activeTab === 'Requests' ? (
-                            requests.map(req => (
-                                <tr key={req.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                                    <td className="py-4 px-6 text-sm font-medium text-gray-900">{req.title}</td>
-                                    <td className="py-4 px-6 text-sm text-gray-600">{req.description}</td>
-                                    <td className="py-4 px-6"><Badge status={req.status} /></td>
-                                    <td className="py-4 px-6 text-right">
-                                        {req.file_path ? (
-                                            <a href={`http://localhost:8000/storage/${req.file_path}`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs font-bold flex items-center justify-end">
-                                                <Download size={16} className="mr-1" /> Download
-                                            </a>
-                                        ) : (
-                                            <span className="text-gray-400 text-xs">Not available</span>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))
-                        ) : (
-                            filteredLetters.map(l => (
-                                <tr key={l.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                                    <td className="py-4 px-6 text-sm font-medium text-gray-900">{l.no || '-'}</td>
-                                    <td className="py-4 px-6 text-sm text-gray-600">{l.subject || l.title}</td>
-                                    <td className="py-4 px-6 text-sm text-gray-600">{activeTab === 'Masuk' ? l.sender : l.recipient || '-'}</td>
-                                    <td className="py-4 px-6 text-sm text-gray-600">{l.created_at ? new Date(l.created_at).toLocaleDateString() : '-'}</td>
-                                    <td className="py-4 px-6">
-                                        <Badge status={l.status} />
-                                    </td>
-                                    <td className="py-4 px-6 text-right">
-                                        {activeTab === 'Pending' ? (
-                                            <button
-                                                onClick={() => setSelectedLetter(l)}
-                                                className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700"
-                                            >
-                                                Review & Sign
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => setSelectedLetter(l)}
-                                                className="text-gray-400 hover:text-blue-600"
-                                            >
-                                                <Eye size={18} />
-                                            </button>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                        {((activeTab === 'Requests' && requests.length === 0) || (activeTab !== 'Requests' && filteredLetters.length === 0)) && (
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-max">
+                        <thead className="bg-gray-50 border-b border-gray-100">
                             <tr>
-                                <td colSpan={6} className="py-8 text-center text-gray-500 text-sm">Tidak ada data.</td>
+                                {activeTab === 'Requests' ? (
+                                    <>
+                                        <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">Title</th>
+                                        <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">Description</th>
+                                        <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">Status</th>
+                                        <th className="text-right py-4 px-6 text-xs font-bold text-gray-500 uppercase">Download</th>
+                                    </>
+                                ) : (
+                                    <>
+                                        <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">No. Surat</th>
+                                        <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">Perihal</th>
+                                        <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">{activeTab === 'Masuk' ? 'Pengirim' : 'Tujuan'}</th>
+                                        <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">Tanggal</th>
+                                        <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase">Status</th>
+                                        <th className="text-right py-4 px-6 text-xs font-bold text-gray-500 uppercase">Aksi</th>
+                                    </>
+                                )}
                             </tr>
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {activeTab === 'Requests' ? (
+                                requests.map(req => (
+                                    <tr key={req.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                                        <td className="py-4 px-6 text-sm font-medium text-gray-900">{req.title}</td>
+                                        <td className="py-4 px-6 text-sm text-gray-600">{req.description}</td>
+                                        <td className="py-4 px-6"><Badge status={req.status} /></td>
+                                        <td className="py-4 px-6 text-right">
+                                            {req.file_path ? (
+                                                <a href={`http://localhost:8000/storage/${req.file_path}`} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs font-bold flex items-center justify-end">
+                                                    <Download size={16} className="mr-1" /> Download
+                                                </a>
+                                            ) : (
+                                                <span className="text-gray-400 text-xs">Not available</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                filteredLetters.map(l => (
+                                    <tr key={l.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                                        <td className="py-4 px-6 text-sm font-medium text-gray-900">{l.no || '-'}</td>
+                                        <td className="py-4 px-6 text-sm text-gray-600">{l.subject || l.title}</td>
+                                        <td className="py-4 px-6 text-sm text-gray-600">{activeTab === 'Masuk' ? l.sender : l.recipient || '-'}</td>
+                                        <td className="py-4 px-6 text-sm text-gray-600">{l.created_at ? new Date(l.created_at).toLocaleDateString() : '-'}</td>
+                                        <td className="py-4 px-6">
+                                            <Badge status={l.status} />
+                                        </td>
+                                        <td className="py-4 px-6 text-right">
+                                            {activeTab === 'Pending' ? (
+                                                <button
+                                                    onClick={() => setSelectedLetter(l)}
+                                                    className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700"
+                                                >
+                                                    Review & Sign
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => setSelectedLetter(l)}
+                                                    className="text-gray-400 hover:text-blue-600"
+                                                >
+                                                    <Eye size={18} />
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                            {((activeTab === 'Requests' && requests.length === 0) || (activeTab !== 'Requests' && filteredLetters.length === 0)) && (
+                                <tr>
+                                    <td colSpan={6} className="py-8 text-center text-gray-500 text-sm">Tidak ada data.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </Card>
 
             {/* Request Modal */}
-            <Modal isOpen={showRequestModal} onClose={() => setShowRequestModal(false)} title="Request Surat ke Sekretaris">
+            < Modal isOpen={showRequestModal} onClose={() => setShowRequestModal(false)} title="Request Surat ke Sekretaris" >
                 <form onSubmit={handleRequest} className="space-y-4">
                     <div>
                         <label className="block text-sm font-bold text-gray-700 mb-1">Judul Surat</label>
@@ -273,10 +275,10 @@ export const Surat = () => {
                         <button type="submit" className="bg-purple-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-purple-700">Kirim Request</button>
                     </div>
                 </form>
-            </Modal>
+            </Modal >
 
             {/* Create Modal */}
-            <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Buat Surat Baru">
+            < Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Buat Surat Baru" >
                 <form onSubmit={handleCreate} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -357,10 +359,10 @@ export const Surat = () => {
                         <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700">Simpan Surat</button>
                     </div>
                 </form>
-            </Modal>
+            </Modal >
 
             {/* Review Modal */}
-            <Modal
+            < Modal
                 isOpen={!!selectedLetter}
                 onClose={() => setSelectedLetter(null)}
                 title="Review & Tanda Tangan Surat"
@@ -413,7 +415,7 @@ export const Surat = () => {
                         </div>
                     </div>
                 )}
-            </Modal>
+            </Modal >
         </div >
     );
 };

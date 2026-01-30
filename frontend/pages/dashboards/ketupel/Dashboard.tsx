@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Clock, Users, Trash2, Edit, ChevronUp, ChevronDown, Search, CheckCircle, UserPlus, Save, FileText, Calendar, Info, X } from 'lucide-react';
 import { Card, Modal, Badge } from '../../../components/ui/Shared';
 import { Kanban } from '../../../components/Kanban';
+import { useNotification, ConfirmationModal } from '../../../components/ui/NotificationSystem';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -55,6 +56,10 @@ export const ProjectLeaderView = ({ currentProker: propProker, members, user, se
     const [selectedReviewTask, setSelectedReviewTask] = useState<any>(null);
     const [leaderRevisionNote, setLeaderRevisionNote] = useState('');
     const [showLeaderReviewModal, setShowLeaderReviewModal] = useState(false);
+
+    // Notification system hooks
+    const { showSuccess, showError } = useNotification();
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState<{ isOpen: boolean; sieToDelete: any | null }>({ isOpen: false, sieToDelete: null });
 
     // Sync BPK state when currentProker changes
     useEffect(() => {
@@ -112,7 +117,7 @@ export const ProjectLeaderView = ({ currentProker: propProker, members, user, se
                 setReviewTasks(reviewTasks.filter(t => t.id !== selectedReviewTask.id));
                 setShowLeaderReviewModal(false);
                 setLeaderRevisionNote('');
-                alert(`Task ${status === 'approved' ? 'approved to Kahima' : 'returned for revision'}!`);
+                showSuccess(status === 'approved' ? 'Task approved and forwarded to Kahima!' : 'Task returned for revision');
                 // Refresh all tasks for Kanban
                 client.get(`/tasks?program_id=${currentProker.id}`).then(r => setAllTasks(r.data));
             });
@@ -139,7 +144,7 @@ export const ProjectLeaderView = ({ currentProker: propProker, members, user, se
                     const updatedProkersList = prokers.map((p: any) => p.id === currentProker.id ? updated : p);
                     setProkers(updatedProkersList);
 
-                    alert("Project configuration saved! Roles and tasks have been updated for all members.");
+                    showSuccess('Project configuration saved! Roles and tasks updated.');
                     setIsDirty(false);
 
                     // Refresh global data to reflect role changes
@@ -149,7 +154,7 @@ export const ProjectLeaderView = ({ currentProker: propProker, members, user, se
                 })
                 .catch(err => {
                     console.error(err);
-                    alert("Failed to save changes. Please try again.");
+                    showError('Failed to save changes. Please try again.');
                 });
         });
     };
@@ -229,7 +234,17 @@ export const ProjectLeaderView = ({ currentProker: propProker, members, user, se
             setNewSie('');
         }
     };
-    const handleDeleteSie = (id: number) => setSies(sies.filter(s => s.id !== id));
+    const handleDeleteSie = (id: number) => {
+        setShowDeleteConfirm({ isOpen: true, sieToDelete: sies.find(s => s.id === id) });
+    };
+
+    const confirmDeleteSie = () => {
+        if (showDeleteConfirm.sieToDelete) {
+            setSies(sies.filter(s => s.id !== showDeleteConfirm.sieToDelete.id));
+            showSuccess(`Division "${showDeleteConfirm.sieToDelete.name}" has been deleted.`);
+        }
+        setShowDeleteConfirm({ isOpen: false, sieToDelete: null });
+    };
     const handleUpdateSie = (id: number, field: string, value: any) => setSies(sies.map(s => s.id === id ? { ...s, [field]: value } : s));
 
     const handleAddTask = (sieId: number) => {
@@ -609,14 +624,14 @@ export const ProjectLeaderView = ({ currentProker: propProker, members, user, se
                     </div>
                     {/* Sie Management Section */}
                     <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                            <h3 className="text-xl font-bold text-gray-900 flex items-center"><Users className="mr-2 text-blue-600" /> Divisi (Sie) Management</h3>
-                            <div className="flex gap-2">
-                                <button onClick={handleExportPDF} className="bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-bold hover:bg-red-700 flex items-center gap-2">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <h3 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center"><Users className="mr-2 text-blue-600" /> Divisi (Sie) Management</h3>
+                            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                                <button onClick={handleExportPDF} className="bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-bold hover:bg-red-700 flex items-center justify-center gap-2 w-full sm:w-auto">
                                     <FileText size={16} /> Export PDF
                                 </button>
-                                <input type="text" placeholder="New Division Name" className="px-3 py-2 border border-gray-300 rounded-lg text-sm" value={newSie} onChange={e => setNewSie(e.target.value)} />
-                                <button onClick={handleAddSie} className="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-bold hover:bg-blue-700">+ Add Sie</button>
+                                <input type="text" placeholder="New Division Name" className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-full sm:w-auto" value={newSie} onChange={e => setNewSie(e.target.value)} />
+                                <button onClick={handleAddSie} className="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 w-full sm:w-auto">+ Add Sie</button>
                             </div>
                         </div>
                         <div className="grid grid-cols-1 gap-4">
@@ -664,10 +679,12 @@ export const ProjectLeaderView = ({ currentProker: propProker, members, user, se
                                                                 <div className="flex items-center gap-3"><span className="text-xs text-gray-500">{task.deadline}</span></div>
                                                             </div>
                                                         ))}
-                                                        <div className="flex gap-2 pt-2">
-                                                            <input type="text" placeholder="New Task" className="flex-1 p-2 text-sm border border-gray-300 rounded-lg" value={newTask.sieId === sie.id ? newTask.title : ''} onChange={(e) => setNewTask({ ...newTask, title: e.target.value, sieId: sie.id })} />
-                                                            <input type="date" className="w-32 p-2 text-sm border border-gray-300 rounded-lg" value={newTask.sieId === sie.id ? newTask.deadline : ''} onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value, sieId: sie.id })} />
-                                                            <button onClick={() => handleAddTask(sie.id)} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-xs hover:bg-green-700">Add</button>
+                                                        <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                                                            <input type="text" placeholder="New Task" className="flex-1 p-2 text-sm border border-gray-300 rounded-lg w-full" value={newTask.sieId === sie.id ? newTask.title : ''} onChange={(e) => setNewTask({ ...newTask, title: e.target.value, sieId: sie.id })} />
+                                                            <div className="flex gap-2">
+                                                                <input type="date" className="flex-1 sm:w-32 p-2 text-sm border border-gray-300 rounded-lg" value={newTask.sieId === sie.id ? newTask.deadline : ''} onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value, sieId: sie.id })} />
+                                                                <button onClick={() => handleAddTask(sie.id)} className="bg-green-600 text-white px-3 py-2 rounded-lg font-bold text-xs hover:bg-green-700 whitespace-nowrap">Add</button>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -736,6 +753,17 @@ export const ProjectLeaderView = ({ currentProker: propProker, members, user, se
                     </div>
                 </div>
             </Modal>
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={showDeleteConfirm.isOpen}
+                title="Delete Division"
+                message={`Are you sure you want to delete "${showDeleteConfirm.sieToDelete?.name}"? This action cannot be undone.`}
+                type="danger"
+                confirmLabel="Delete"
+                onConfirm={confirmDeleteSie}
+                onCancel={() => setShowDeleteConfirm({ isOpen: false, sieToDelete: null })}
+            />
 
             <div className="hidden">
                 <Badge status="dummy" />

@@ -13,9 +13,12 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-        // Security Check: Only Super Admin can create users
-        if ($request->user()->status !== 'superadmin') {
-            return response()->json(['message' => 'Unauthorized. Only Super Admin can create users.'], 403);
+        \Illuminate\Support\Facades\Log::info('Store User Request - User Status: ' . $request->user()->status);
+        
+        // Allow Super Admin, Kahima (Admin), Kadep, and Admin role to create users (Case Insensitive)
+        $allowed = ['superadmin', 'kahima', 'kadep', 'admin'];
+        if (!in_array(strtolower($request->user()->status), $allowed)) {
+            return response()->json(['message' => 'Unauthorized. Insufficient permissions. Status: ' . $request->user()->status], 403);
         }
 
         $validated = $request->validate([
@@ -26,8 +29,16 @@ class UserController extends Controller
             'department_id' => 'nullable|string',
             'nim' => 'nullable|string',
             'points' => 'integer',
-            'status' => 'nullable|string', // Allow status assignment
+            'status' => 'nullable|string', 
         ]);
+
+        // Auto-assign department for Kadep if not sent
+        if (in_array(strtolower($request->user()->status), ['kadep', 'admin']) && empty($validated['department_id'])) {
+             // Use user's department if available
+             if ($request->user()->department_id) {
+                 $validated['department_id'] = $request->user()->department_id;
+             }
+        }
 
         $validated['password'] = bcrypt($validated['password']);
         $user = \App\Models\User::create($validated);
@@ -35,9 +46,12 @@ class UserController extends Controller
     }
     public function update(Request $request, $id)
     {
-        // Security Check: Only Super Admin can update users
-        if ($request->user()->status !== 'superadmin') {
-            return response()->json(['message' => 'Unauthorized. Only Super Admin can update users.'], 403);
+        \Illuminate\Support\Facades\Log::info('Update User Request - User Status: ' . $request->user()->status . ' for ID: ' . $id);
+
+        // Allow Super Admin, Kahima, Kadep, and Admin
+        $allowed = ['superadmin', 'kahima', 'kadep', 'admin'];
+        if (!in_array(strtolower($request->user()->status), $allowed)) {
+             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
         \Illuminate\Support\Facades\Log::info('Update User Request', ['id' => $id, 'data' => $request->all()]);
@@ -67,9 +81,12 @@ class UserController extends Controller
 
     public function destroy(Request $request, $id)
     {
-        // Security Check: Only Super Admin can delete users
-        if ($request->user()->status !== 'superadmin') {
-            return response()->json(['message' => 'Unauthorized. Only Super Admin can delete users.'], 403);
+        \Illuminate\Support\Facades\Log::info('Destroy User Request - User Status: ' . $request->user()->status . ' for ID: ' . $id);
+        
+        // Allow Super Admin, Kahima, Kadep, and Admin
+        $allowed = ['superadmin', 'kahima', 'kadep', 'admin'];
+        if (!in_array(strtolower($request->user()->status), $allowed)) {
+             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
         $user = \App\Models\User::findOrFail($id);
@@ -78,3 +95,4 @@ class UserController extends Controller
         return response()->json(['message' => 'User deleted successfully']);
     }
 }
+

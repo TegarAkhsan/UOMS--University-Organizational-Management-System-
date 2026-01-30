@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, FileText, CheckCircle, Plus, File, Copy, Upload, Download, Send, Printer } from 'lucide-react';
+import { DollarSign, FileText, CheckCircle, Plus, File, Copy, Upload, Download, Send, Printer, Check } from 'lucide-react';
 import { BUDGET_CODES } from '../../../../data/mockData';
 import client from '../../../../src/api/client';
 
@@ -15,6 +15,7 @@ export const ProjectTreasurerView = ({ treasuryProker }: any) => {
     // Rekap Data State
     const [rekapItems, setRekapItems] = useState<any[]>([]);
     const [newRekap, setNewRekap] = useState<any>({ noBukti: '', keterangan: '', amount: 0, type: 'Kredit', file: null });
+    const [showRekapSuccess, setShowRekapSuccess] = useState(false);
 
     useEffect(() => {
         if (treasuryProker) {
@@ -53,8 +54,9 @@ export const ProjectTreasurerView = ({ treasuryProker }: any) => {
             // Calculate saldo on the fly
             let currentSaldo = 0;
             const itemsWithSaldo = res.data.map((item: any) => {
-                const debet = item.type === 'Debet' ? parseFloat(item.amount) : 0;
-                const kredit = item.type === 'Kredit' ? parseFloat(item.amount) : 0;
+                // Use Math.round for exact integer display
+                const debet = item.type === 'Debet' ? Math.round(parseFloat(item.amount)) : 0;
+                const kredit = item.type === 'Kredit' ? Math.round(parseFloat(item.amount)) : 0;
                 currentSaldo = currentSaldo + debet - kredit;
                 return {
                     ...item,
@@ -74,7 +76,8 @@ export const ProjectTreasurerView = ({ treasuryProker }: any) => {
         formData.append('program_id', treasuryProker.id);
         formData.append('description', newRekap.keterangan);
         formData.append('proof_no', newRekap.noBukti || '');
-        formData.append('amount', newRekap.amount);
+        // Use Math.round to ensure exact integer value
+        formData.append('amount', String(Math.round(Number(newRekap.amount))));
         formData.append('type', newRekap.type);
         if (newRekap.file) {
             formData.append('file', newRekap.file);
@@ -85,7 +88,7 @@ export const ProjectTreasurerView = ({ treasuryProker }: any) => {
         }).then(() => {
             fetchRecaps();
             setNewRekap({ noBukti: '', keterangan: '', amount: 0, type: 'Kredit', file: null });
-            alert("Data realization added successfully.");
+            setShowRekapSuccess(true);
         }).catch(err => {
             console.error(err);
             alert("Failed to add realization data.");
@@ -461,6 +464,29 @@ export const ProjectTreasurerView = ({ treasuryProker }: any) => {
                     </>
                 )}
             </div>
+
+            {/* Rekap Dana Success Modal */}
+            {showRekapSuccess && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-scale-in">
+                        <div className="bg-green-600 p-6 text-center">
+                            <div className="mx-auto bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mb-4 backdrop-blur-md">
+                                <Check size={32} className="text-white" />
+                            </div>
+                            <h3 className="text-2xl font-bold text-white">Berhasil!</h3>
+                            <p className="text-green-100 mt-2 text-sm">Data Rekap Berhasil Ditambahkan</p>
+                        </div>
+                        <div className="p-6">
+                            <button
+                                onClick={() => setShowRekapSuccess(false)}
+                                className="w-full bg-gray-900 text-white py-3 rounded-xl font-bold hover:bg-gray-800 transition-all"
+                            >
+                                OK
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -17,7 +17,8 @@ export const Login = ({ onLogin, onBack }: { onLogin: (user: any) => void, onBac
     if (isLogin) {
       try {
         const response = await client.post('/login', { email, password });
-        const { token, user } = response.data;
+        const { access_token, user } = response.data;
+        const token = access_token; // Map backend's access_token to our local variable
 
         localStorage.setItem('auth_token', token);
         client.defaults.headers.common['Authorization'] = `Bearer ${token}`;

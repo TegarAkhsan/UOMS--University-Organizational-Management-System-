@@ -108,56 +108,106 @@ export const Departments = ({ members, prokers, setProkers }: { members: any[], 
         const deptMembers = members.filter(m => (m.department_id === selectedDept.id || m.dept === selectedDept.id));
 
         return (
-            <div className="space-y-8 animate-fade-in">
-                {/* Header */}
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Department View</h1>
-                    <p className="text-blue-500">Manage department details, staff, projects, and reports.</p>
-                </div>
-
+            <div className="space-y-8 animate-fade-in pb-10">
                 <button
                     onClick={() => setView('list')}
-                    className="text-gray-500 hover:text-gray-900 flex items-center mb-4"
+                    className="text-gray-500 hover:text-gray-900 flex items-center mb-6 transition-colors font-medium px-4 py-2 hover:bg-gray-100 rounded-lg w-fit"
                 >
-                    <ArrowLeft size={16} className="mr-1" /> Back to List
+                    <ArrowLeft size={18} className="mr-2" /> Back to Departments
                 </button>
 
-                {/* Department Info */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 space-y-4">
-                        <h3 className="text-3xl font-bold text-gray-900">{selectedDept.fullName}</h3>
-                        <p className="text-blue-600 text-lg">{selectedDept.head} (Head of Department)</p>
-                        <div className="bg-gray-50 p-6 rounded-xl border border-gray-100 space-y-4">
-                            <div>
-                                <h4 className="font-bold text-gray-900 mb-2">Fungsi Departemen</h4>
-                                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{texts.fungsi}</p>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Left Column: Dept Info */}
+                    <div className="lg:col-span-2 space-y-8">
+                        {/* Header Section */}
+                        <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden">
+                            {/* Decorative Background Element */}
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full opacity-50 -mr-8 -mt-8"></div>
+
+                            <h3 className="text-3xl lg:text-3xl font-bold text-gray-900 mb-6 leading-tight">{selectedDept.fullName}</h3>
+
+                            <div className="flex flex-col sm:flex-row gap-6">
+                                {/* Head of Dept Card */}
+                                <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200 min-w-[250px]">
+                                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-lg">
+                                        {selectedDept.head.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-0.5">Head of Department</p>
+                                        <p className="font-bold text-gray-900 text-base">{selectedDept.head}</p>
+                                    </div>
+                                </div>
+
+                                {/* Quick Stats */}
+                                <div className="flex items-center gap-6 px-4">
+                                    <div className="text-center">
+                                        <p className="text-2xl font-bold text-gray-900">{deptMembers.length}</p>
+                                        <p className="text-xs text-gray-500 font-medium">Members</p>
+                                    </div>
+                                    <div className="w-px h-8 bg-gray-200"></div>
+                                    <div className="text-center">
+                                        <p className="text-2xl font-bold text-gray-900">{deptProkers.length}</p>
+                                        <p className="text-xs text-gray-500 font-medium">Projects</p>
+                                    </div>
+                                </div>
                             </div>
+                        </div>
+
+                        <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm space-y-8">
                             <div>
-                                <h4 className="font-bold text-gray-900 mb-2">Arahan Kerja</h4>
-                                <ul className="list-disc pl-5 space-y-1 text-gray-700">
-                                    {texts.arahan.map((item: string, idx: number) => <li key={idx}>{item}</li>)}
+                                <h4 className="flex items-center text-lg font-bold text-gray-900 mb-3">
+                                    <ClipboardList className="mr-2 text-blue-500" size={20} />
+                                    Fungsi Departemen
+                                </h4>
+                                <p className="text-gray-600 leading-7 text-base whitespace-pre-wrap">{texts.fungsi}</p>
+                            </div>
+                            <div className="border-t border-gray-100 pt-6">
+                                <h4 className="flex items-center text-lg font-bold text-gray-900 mb-3">
+                                    <Users className="mr-2 text-green-500" size={20} />
+                                    Arahan Kerja
+                                </h4>
+                                <ul className="space-y-3">
+                                    {texts.arahan.map((item: string, idx: number) => (
+                                        <li key={idx} className="flex items-start text-gray-700">
+                                            <span className="mr-3 text-blue-400 mt-1.5">•</span>
+                                            <span className="leading-relaxed">{item}</span>
+                                        </li>
+                                    ))}
                                 </ul>
                             </div>
                         </div>
+
                         <button
                             onClick={(e) => handleEditClick(selectedDept, e)}
-                            className="flex items-center space-x-2 bg-gray-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-300"
+                            className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
                         >
+                            <Edit size={16} />
                             <span>Edit Department Details</span>
-                            <Edit size={14} />
                         </button>
                     </div>
-                    <div>
+
+                    {/* Right Column: Visual/Extra */}
+                    <div className="space-y-6">
                         <img
                             src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80"
                             alt="Department Building"
-                            className="rounded-xl w-full h-40 object-cover mb-4"
+                            className="rounded-2xl w-full h-48 object-cover shadow-sm"
                         />
-                        <div className="p-4 bg-white border border-gray-200 rounded-xl">
-                            <p className="text-sm text-gray-500 mb-1">Department ID</p>
-                            <p className="font-bold text-gray-900 mb-4">DPT{selectedDept.id}</p>
-                            <p className="text-sm text-gray-500 mb-1">Staff Count</p>
-                            <p className="font-bold text-gray-900">{deptMembers.length} Members</p>
+                        <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-sm">
+                            <h4 className="font-bold text-gray-900 mb-4 flex items-center">
+                                <Settings size={18} className="mr-2 text-gray-400" />
+                                Details
+                            </h4>
+                            <div className="space-y-4">
+                                <div>
+                                    <p className="text-xs text-gray-500 font-bold uppercase">Department ID</p>
+                                    <p className="font-medium text-gray-900 bg-gray-50 px-3 py-1.5 rounded-lg inline-block mt-1">DPT{selectedDept.id}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500 font-bold uppercase">Department Code</p>
+                                    <p className="font-medium text-gray-900 mt-1">{selectedDept.name}</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -265,7 +315,7 @@ export const Departments = ({ members, prokers, setProkers }: { members: any[], 
                     )}
                 </Modal>
 
-            </div>
+            </div >
         );
     }
 

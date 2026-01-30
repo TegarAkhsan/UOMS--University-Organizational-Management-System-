@@ -12,7 +12,11 @@ return new class extends Migration {
     {
         Schema::table('tasks', function (Blueprint $table) {
             // Explicitly drop the check constraint for Postgres
-            DB::statement('ALTER TABLE tasks DROP CONSTRAINT IF EXISTS tasks_status_check');
+            try {
+                DB::statement('ALTER TABLE tasks DROP CONSTRAINT IF EXISTS tasks_status_check');
+            } catch (\Throwable $e) {
+                // Ignore error if constraint doesn't exist or syntax isn't supported
+            }
         });
     }
 

@@ -1,10 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Calendar, Users, Trash2, ChevronDown, ChevronUp, Search, CheckCircle, Edit, Save, X, Plus, Clock } from 'lucide-react';
+import { ArrowLeft, Calendar, Users, Trash2, ChevronDown, ChevronUp, Search, CheckCircle, Edit, Save, X, Plus, Clock, Check, CalendarDays } from 'lucide-react';
 import { Card, Badge, Modal } from '../../../../../components/ui/Shared';
 import { DashboardHeader } from '../../../../../components/DashboardHeader';
 import { ProjectTabs } from '../../../../../components/ProjectTabs';
 import { ProjectSecretaryView } from '../../../staff/views/ProjectSecretaryView';
 import { ProjectTreasurerView } from '../../../staff/views/ProjectTreasurerView';
+
+// BPH Roles to exclude from Manage Staff modal
+const BPH_ROLES = [
+    'Kahima', 'Ketua Himpunan',
+    'Wakil Kahima', 'Wakil Ketua Himpunan', 'Wakahima',
+    'Sekretaris Umum', 'Sekretaris 1', 'Sekretaris 2',
+    'Bendahara Umum', 'Bendahara 1', 'Bendahara 2'
+];
+
+// Roles to exclude from BPK Assignment (Kadep roles)
+const KADEP_ROLES = ['Kadep', 'Ketua Departemen', 'Kepala Departemen'];
+
+// Helper function to add days to a date
+const addDays = (dateStr: string, days: number): string => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    date.setDate(date.getDate() + days);
+    return date.toISOString().split('T')[0];
+};
 
 export const KadepProjectDetail = ({
     user,
@@ -12,11 +31,14 @@ export const KadepProjectDetail = ({
     setView,
     selectedItem,
     onUpdateProject,
-    members
+    members,
+    myDeptCode
 }: any) => {
     const [activeTab, setActiveTab] = useState('overview');
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState<any>(selectedItem);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
 
     // Local state for specific tab interactions that don't need immediate saving
     const [newSie, setNewSie] = useState('');
@@ -42,18 +64,21 @@ export const KadepProjectDetail = ({
                 treasurer_name: formData.treasurer_name,
                 // Ensure sies and tasks are included
                 sies: formData.sies,
-                tasks: formData.tasks
+                tasks: formData.tasks,
+                // Timeline fields
+                timeline_konsep_start: formData.timeline_konsep_start,
+                timeline_konsep_end: formData.timeline_konsep_end,
+                timeline_persiapan_start: formData.timeline_persiapan_start,
+                timeline_persiapan_end: formData.timeline_persiapan_end
             };
 
             client.put(`/programs/${selectedItem.id}`, payload)
                 .then(res => {
                     const updated = res.data;
-                    // Preserve the object structure for leader/dept if backend returns strings
-                    // or just rely on the parent to refresh correctly.
-                    // For now, let's update the parent with what we got.
                     onUpdateProject(updated);
                     setIsEditing(false);
-                    alert('Changes saved successfully!');
+                    setSuccessMessage('Changes saved successfully!');
+                    setShowSuccessModal(true);
                 })
                 .catch(err => {
                     console.error(err);
@@ -134,11 +159,22 @@ export const KadepProjectDetail = ({
         setFormData({ ...formData, tasks: updatedTasks });
     };
 
-    // Helpers
+    // Helpers - Filter members: exclude BPH roles, show all functionaries
     const availableMembers = members.filter((m: any) => {
-        // Filter logic
         const matchesSearch = staffSearchTerm === '' || m.name.toLowerCase().includes(staffSearchTerm.toLowerCase());
-        return matchesSearch;
+        // Exclude BPH roles
+        const memberRole = m.role || '';
+        const isNotBPH = !BPH_ROLES.some(bphRole => memberRole.toLowerCase().includes(bphRole.toLowerCase()));
+        return matchesSearch && isNotBPH;
+    });
+
+    // Department staff only for BPK Assignment (exclude Kadep, only include same department staff)
+    const deptStaffMembers = members.filter((m: any) => {
+        const isDeptMember = m.dept === myDeptCode || m.department_id === myDeptCode;
+        const memberRole = m.role || '';
+        const isNotKadep = !KADEP_ROLES.some(kadepRole => memberRole.toLowerCase().includes(kadepRole.toLowerCase()));
+        const isNotBPH = !BPH_ROLES.some(bphRole => memberRole.toLowerCase().includes(bphRole.toLowerCase()));
+        return isDeptMember && isNotKadep && isNotBPH;
     });
 
     // Determine if we can edit
@@ -251,7 +287,7 @@ export const KadepProjectDetail = ({
                                                     onChange={(e) => updateField('secretary_name', e.target.value)}
                                                 >
                                                     <option value="">Select Secretary</option>
-                                                    {members.map((m: any) => <option key={m.id} value={m.name}>{m.name}</option>)}
+                                                    {deptStaffMembers.map((m: any) => <option key={m.id} value={m.name}>{m.name}</option>)}
                                                 </select>
                                             ) : (
                                                 <p className="font-bold text-gray-900 text-sm">{formData.secretary_name || '-'}</p>
@@ -266,7 +302,7 @@ export const KadepProjectDetail = ({
                                                     onChange={(e) => updateField('treasurer_name', e.target.value)}
                                                 >
                                                     <option value="">Select Treasurer</option>
-                                                    {members.map((m: any) => <option key={m.id} value={m.name}>{m.name}</option>)}
+                                                    {deptStaffMembers.map((m: any) => <option key={m.id} value={m.name}>{m.name}</option>)}
                                                 </select>
                                             ) : (
                                                 <p className="font-bold text-gray-900 text-sm">{formData.treasurer_name || '-'}</p>
@@ -367,65 +403,223 @@ export const KadepProjectDetail = ({
 
                         {/* TIMELINE TAB */}
                         {activeTab === 'timeline' && (
-                            <div className="space-y-6">
-                                <div className="flex justify-between items-center">
-                                    <h3 className="text-xl font-bold text-gray-900">Timeline & Tasks</h3>
-                                    {isEditing && (
-                                        <div className="flex gap-2 w-1/2">
-                                            <input
-                                                type="text"
-                                                placeholder="Add a new task..."
-                                                className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm"
-                                                value={newTask}
-                                                onChange={e => setNewTask(e.target.value)}
-                                                onKeyDown={e => e.key === 'Enter' && handleAddTask()}
-                                            />
-                                            <button onClick={handleAddTask} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-700">Add</button>
-                                        </div>
-                                    )}
+                            <div className="space-y-8">
+                                {/* Timeline Phases Section */}
+                                <div>
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <CalendarDays className="text-blue-600" size={24} />
+                                        <h3 className="text-xl font-bold text-gray-900">Timeline Kegiatan</h3>
+                                    </div>
+
+                                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                                        <table className="w-full">
+                                            <thead className="bg-gray-50 border-b border-gray-200">
+                                                <tr>
+                                                    <th className="p-4 text-left text-sm font-bold text-gray-700">Fase Kegiatan</th>
+                                                    <th className="p-4 text-left text-sm font-bold text-gray-700">Tanggal Mulai</th>
+                                                    <th className="p-4 text-left text-sm font-bold text-gray-700">Tanggal Selesai</th>
+                                                    <th className="p-4 text-center text-sm font-bold text-gray-700">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {/* Konsep Kegiatan */}
+                                                <tr className="hover:bg-gray-50">
+                                                    <td className="p-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">1</div>
+                                                            <span className="font-medium text-gray-900">Konsep Kegiatan</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        {isEditing ? (
+                                                            <input
+                                                                type="date"
+                                                                className="p-2 border border-gray-300 rounded-lg text-sm"
+                                                                value={formData.timeline_konsep_start || ''}
+                                                                onChange={(e) => updateField('timeline_konsep_start', e.target.value)}
+                                                            />
+                                                        ) : (
+                                                            <span className="text-sm text-gray-600">{formData.timeline_konsep_start || '-'}</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-4">
+                                                        {isEditing ? (
+                                                            <input
+                                                                type="date"
+                                                                className="p-2 border border-gray-300 rounded-lg text-sm"
+                                                                value={formData.timeline_konsep_end || ''}
+                                                                onChange={(e) => updateField('timeline_konsep_end', e.target.value)}
+                                                            />
+                                                        ) : (
+                                                            <span className="text-sm text-gray-600">{formData.timeline_konsep_end || '-'}</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-4 text-center">
+                                                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${formData.timeline_konsep_start ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                                            {formData.timeline_konsep_start ? 'Set' : 'Pending'}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+
+                                                {/* Persiapan */}
+                                                <tr className="hover:bg-gray-50">
+                                                    <td className="p-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center font-bold text-sm">2</div>
+                                                            <span className="font-medium text-gray-900">Persiapan</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        {isEditing ? (
+                                                            <input
+                                                                type="date"
+                                                                className="p-2 border border-gray-300 rounded-lg text-sm"
+                                                                value={formData.timeline_persiapan_start || ''}
+                                                                onChange={(e) => updateField('timeline_persiapan_start', e.target.value)}
+                                                            />
+                                                        ) : (
+                                                            <span className="text-sm text-gray-600">{formData.timeline_persiapan_start || '-'}</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-4">
+                                                        {isEditing ? (
+                                                            <input
+                                                                type="date"
+                                                                className="p-2 border border-gray-300 rounded-lg text-sm"
+                                                                value={formData.timeline_persiapan_end || ''}
+                                                                onChange={(e) => updateField('timeline_persiapan_end', e.target.value)}
+                                                            />
+                                                        ) : (
+                                                            <span className="text-sm text-gray-600">{formData.timeline_persiapan_end || '-'}</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-4 text-center">
+                                                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${formData.timeline_persiapan_start ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                                            {formData.timeline_persiapan_start ? 'Set' : 'Pending'}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+
+                                                {/* Pelaksanaan (from deadline) */}
+                                                <tr className="hover:bg-blue-50 bg-blue-50/50">
+                                                    <td className="p-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">H</div>
+                                                            <div>
+                                                                <span className="font-bold text-blue-900">Hari Pelaksanaan</span>
+                                                                <p className="text-xs text-blue-600">Otomatis dari tanggal deadline</p>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4" colSpan={2}>
+                                                        <div className="flex items-center gap-2">
+                                                            <Calendar size={16} className="text-blue-600" />
+                                                            <span className="font-bold text-blue-900">{formData.deadline || 'Belum ditentukan'}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4 text-center">
+                                                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${formData.deadline ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+                                                            {formData.deadline ? 'Auto' : 'Pending'}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+
+                                                {/* SPJ & LPJ (auto 5 days after) */}
+                                                <tr className="hover:bg-purple-50 bg-purple-50/50">
+                                                    <td className="p-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-sm">📋</div>
+                                                            <div>
+                                                                <span className="font-bold text-purple-900">Penyusunan SPJ & LPJ</span>
+                                                                <p className="text-xs text-purple-600">Otomatis 5 hari setelah pelaksanaan</p>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <span className="font-medium text-purple-700">
+                                                            {formData.deadline ? addDays(formData.deadline, 1) : '-'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <span className="font-medium text-purple-700">
+                                                            {formData.deadline ? addDays(formData.deadline, 5) : '-'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 text-center">
+                                                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${formData.deadline ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-500'}`}>
+                                                            {formData.deadline ? 'Auto' : 'Pending'}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
 
-                                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                                    {!formData.tasks || formData.tasks.length === 0 ? (
-                                        <div className="p-12 text-center">
-                                            <Clock size={48} className="mx-auto text-gray-300 mb-4" />
-                                            <p className="text-gray-500">No tasks or timeline items yet.</p>
+                                {/* Tasks Section */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div className="flex items-center gap-2">
+                                            <Clock className="text-gray-600" size={20} />
+                                            <h3 className="text-lg font-bold text-gray-900">Tasks & Checklist</h3>
                                         </div>
-                                    ) : (
-                                        <div className="divide-y divide-gray-100">
-                                            {formData.tasks.map((task: any, index: number) => (
-                                                <div key={task.id || index} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${task.status === 'Done' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
-                                                            {index + 1}
+                                        {isEditing && (
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Add a new task..."
+                                                    className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm w-64"
+                                                    value={newTask}
+                                                    onChange={e => setNewTask(e.target.value)}
+                                                    onKeyDown={e => e.key === 'Enter' && handleAddTask()}
+                                                />
+                                                <button onClick={handleAddTask} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-700">Add</button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                                        {!formData.tasks || formData.tasks.length === 0 ? (
+                                            <div className="p-8 text-center">
+                                                <Clock size={40} className="mx-auto text-gray-300 mb-3" />
+                                                <p className="text-gray-500 text-sm">No tasks added yet. {isEditing && 'Add tasks above.'}</p>
+                                            </div>
+                                        ) : (
+                                            <div className="divide-y divide-gray-100">
+                                                {formData.tasks.map((task: any, index: number) => (
+                                                    <div key={task.id || index} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${task.status === 'Done' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
+                                                                {index + 1}
+                                                            </div>
+                                                            <div>
+                                                                <p className={`font-medium ${task.status === 'Done' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{task.title}</p>
+                                                                <p className="text-xs text-gray-500">Status: {task.status}</p>
+                                                            </div>
                                                         </div>
-                                                        <div>
-                                                            <p className={`font-medium ${task.status === 'Done' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{task.title}</p>
-                                                            <p className="text-xs text-gray-500">Status: {task.status}</p>
+                                                        <div className="flex items-center gap-2">
+                                                            {isEditing && (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => handleToggleTask(task.id)}
+                                                                        className={`px-3 py-1 rounded-full text-xs font-bold border ${task.status === 'Done' ? 'bg-white border-gray-300 text-gray-500' : 'bg-green-50 border-green-200 text-green-600'}`}
+                                                                    >
+                                                                        {task.status === 'Done' ? 'Mark Pending' : 'Mark Done'}
+                                                                    </button>
+                                                                    <button onClick={() => handleDeleteTask(task.id)} className="p-2 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50">
+                                                                        <Trash2 size={16} />
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                            {!isEditing && (
+                                                                <Badge status={task.status} />
+                                                            )}
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
-                                                        {isEditing && (
-                                                            <>
-                                                                <button
-                                                                    onClick={() => handleToggleTask(task.id)}
-                                                                    className={`px-3 py-1 rounded-full text-xs font-bold border ${task.status === 'Done' ? 'bg-white border-gray-300 text-gray-500' : 'bg-green-50 border-green-200 text-green-600'}`}
-                                                                >
-                                                                    {task.status === 'Done' ? 'Mark Pending' : 'Mark Done'}
-                                                                </button>
-                                                                <button onClick={() => handleDeleteTask(task.id)} className="p-2 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50">
-                                                                    <Trash2 size={16} />
-                                                                </button>
-                                                            </>
-                                                        )}
-                                                        {!isEditing && (
-                                                            <Badge status={task.status} />
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -473,6 +667,29 @@ export const KadepProjectDetail = ({
                         <div className="flex justify-end pt-4"><button onClick={() => { setSelectedSieForStaff(null); setStaffSearchTerm(''); }} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold">Done</button></div>
                     </div>
                 </Modal>
+
+                {/* Success Modal */}
+                {showSuccessModal && (
+                    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-scale-in">
+                            <div className="bg-green-600 p-6 text-center">
+                                <div className="mx-auto bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mb-4 backdrop-blur-md">
+                                    <Check size={32} className="text-white" />
+                                </div>
+                                <h3 className="text-2xl font-bold text-white">Success!</h3>
+                                <p className="text-green-100 mt-2 text-sm">{successMessage}</p>
+                            </div>
+                            <div className="p-6">
+                                <button
+                                    onClick={() => setShowSuccessModal(false)}
+                                    className="w-full bg-gray-900 text-white py-3 rounded-xl font-bold hover:bg-gray-800 transition-all"
+                                >
+                                    Continue
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </main>
         </div>
     );

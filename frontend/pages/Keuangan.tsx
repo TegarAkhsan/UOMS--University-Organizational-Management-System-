@@ -105,7 +105,20 @@ export const Keuangan = () => {
 
             <div>
                 <h3 className="text-lg font-bold text-gray-900 mb-4">Transactions</h3>
-                <div className="flex flex-wrap gap-2 mb-4">
+
+                {/* Mobile Filter Dropdown */}
+                <div className="md:hidden mb-4">
+                    <select
+                        value={transactionFilter}
+                        onChange={(e) => setTransactionFilter(e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded-lg bg-white"
+                    >
+                        {filters.map(f => <option key={f} value={f}>{f}</option>)}
+                    </select>
+                </div>
+
+                {/* Desktop Filter Buttons */}
+                <div className="hidden md:flex flex-wrap gap-2 mb-4">
                     {filters.map(f => (
                         <button
                             key={f}
@@ -121,45 +134,47 @@ export const Keuangan = () => {
                 </div>
 
                 <Card className="p-0 overflow-hidden border border-gray-200 rounded-xl">
-                    <table className="w-full">
-                        <thead className="bg-gray-50 border-b border-gray-100">
-                            <tr>
-                                <th className="text-left py-4 px-4 text-xs font-bold text-gray-500 uppercase">Date</th>
-                                <th className="text-left py-4 px-4 text-xs font-bold text-gray-500 uppercase">Type</th>
-                                <th className="text-left py-4 px-4 text-xs font-bold text-gray-500 uppercase">Amount</th>
-                                <th className="text-left py-4 px-4 text-xs font-bold text-gray-500 uppercase">Description</th>
-                                <th className="text-left py-4 px-4 text-xs font-bold text-gray-500 uppercase">Name</th>
-                                <th className="text-left py-4 px-4 text-xs font-bold text-gray-500 uppercase">Payment Method</th>
-                                <th className="text-left py-4 px-4 text-xs font-bold text-gray-500 uppercase">Category</th>
-                                <th className="text-left py-4 px-4 text-xs font-bold text-gray-500 uppercase">Proker</th>
-                                <th className="text-left py-4 px-4 text-xs font-bold text-gray-500 uppercase">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredTransactions.map(t => (
-                                <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                                    <td className="py-4 px-4 text-sm font-medium text-gray-900">{t.date}</td>
-                                    <td className={`py-4 px-4 text-sm font-bold ${t.type === 'Income' ? 'text-green-600' : 'text-red-600'}`}>{t.type}</td>
-                                    <td className="py-4 px-4 text-sm font-medium text-gray-900">{formatCurrency(t.amount)}</td>
-                                    <td className="py-4 px-4 text-sm text-gray-600">{t.description}</td>
-                                    <td className="py-4 px-4 text-sm text-gray-600">{t.name}</td>
-                                    <td className="py-4 px-4 text-sm text-gray-600">{t.payment}</td>
-                                    <td className="py-4 px-4 text-sm text-gray-600">{t.category}</td>
-                                    <td className="py-4 px-4 text-sm text-blue-600">{t.proker}</td>
-                                    <td className="py-4 px-4">
-                                        <Badge status={t.status} />
-                                    </td>
-                                </tr>
-                            ))}
-                            {filteredTransactions.length === 0 && (
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-max">
+                            <thead className="bg-gray-50 border-b border-gray-100">
                                 <tr>
-                                    <td colSpan={9} className="py-12 text-center text-gray-500">
-                                        No transactions found for filter "{transactionFilter}".
-                                    </td>
+                                    <th className="text-left py-4 px-4 text-xs font-bold text-gray-500 uppercase">Date</th>
+                                    <th className="text-left py-4 px-4 text-xs font-bold text-gray-500 uppercase">Type</th>
+                                    <th className="text-left py-4 px-4 text-xs font-bold text-gray-500 uppercase">Amount</th>
+                                    <th className="text-left py-4 px-4 text-xs font-bold text-gray-500 uppercase">Description</th>
+                                    <th className="text-left py-4 px-4 text-xs font-bold text-gray-500 uppercase">Name</th>
+                                    <th className="text-left py-4 px-4 text-xs font-bold text-gray-500 uppercase">Payment Method</th>
+                                    <th className="text-left py-4 px-4 text-xs font-bold text-gray-500 uppercase">Category</th>
+                                    <th className="text-left py-4 px-4 text-xs font-bold text-gray-500 uppercase">Proker</th>
+                                    <th className="text-left py-4 px-4 text-xs font-bold text-gray-500 uppercase">Status</th>
                                 </tr>
-                            )}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {filteredTransactions.map(t => (
+                                    <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                                        <td className="py-4 px-4 text-sm font-medium text-gray-900">{t.date}</td>
+                                        <td className={`py-4 px-4 text-sm font-bold ${t.type === 'Income' ? 'text-green-600' : 'text-red-600'}`}>{t.type}</td>
+                                        <td className="py-4 px-4 text-sm font-medium text-gray-900">{formatCurrency(t.amount)}</td>
+                                        <td className="py-4 px-4 text-sm text-gray-600">{t.description}</td>
+                                        <td className="py-4 px-4 text-sm text-gray-600">{t.name}</td>
+                                        <td className="py-4 px-4 text-sm text-gray-600">{t.payment}</td>
+                                        <td className="py-4 px-4 text-sm text-gray-600">{t.category}</td>
+                                        <td className="py-4 px-4 text-sm text-blue-600">{t.proker}</td>
+                                        <td className="py-4 px-4">
+                                            <Badge status={t.status} />
+                                        </td>
+                                    </tr>
+                                ))}
+                                {filteredTransactions.length === 0 && (
+                                    <tr>
+                                        <td colSpan={9} className="py-12 text-center text-gray-500">
+                                            No transactions found for filter "{transactionFilter}".
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </Card>
             </div>
 

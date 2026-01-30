@@ -176,29 +176,31 @@ export const KahimaDashboard = ({ user, onLogout }: any) => {
         <div className="min-h-screen bg-gray-50 font-sans">
             {/* Removed DashboardHeader as requested */}
 
-            <main className="max-w-7xl mx-auto px-6 py-8 space-y-8 animate-fade-in">
+            <main className="max-w-7xl mx-auto px-0 md:px-6 py-4 md:py-8 space-y-4 md:space-y-8 animate-fade-in">
 
                 {/* Welcome Section */}
-                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 to-indigo-700 p-8 text-white shadow-xl">
-                    <div className="relative z-10 flex justify-between items-start">
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 to-indigo-700 p-6 md:p-8 text-white shadow-xl">
+                    <div className="relative z-10 flex flex-col md:flex-row justify-between items-start gap-4">
                         <div>
-                            <h1 className="text-4xl font-extrabold mb-2">Welcome back, {user?.name}! 👋</h1>
-                            <p className="text-blue-100 text-lg max-w-2xl">Here's what's happening in Himaforstic today. You have <span className="font-bold text-white">{stats.activeProkers} active projects</span> requiring your attention.</p>
+                            <h1 className="text-2xl md:text-4xl font-extrabold mb-2">Welcome back, {user?.name?.split(' ')[0]}! 👋</h1>
+                            <p className="text-blue-100 text-sm md:text-lg max-w-2xl">
+                                Here's what's happening. You have <span className="font-bold text-white">{stats.activeProkers} active projects</span>.
+                            </p>
                         </div>
-                        <div className="flex space-x-3">
+                        <div className="flex w-full md:w-auto space-x-2 md:space-x-3 mt-2 md:mt-0">
                             <button
                                 onClick={() => setShowCabinetSetupModal(true)}
-                                className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg backdrop-blur-sm flex items-center space-x-2 transition-all"
+                                className="flex-1 md:flex-none justify-center bg-white/20 hover:bg-white/30 text-white px-3 py-2 text-sm md:text-base rounded-lg backdrop-blur-sm flex items-center space-x-2 transition-all"
                             >
-                                <Users size={18} />
-                                <span>Setup Kabinet</span>
+                                <Users size={16} />
+                                <span>Setup</span>
                             </button>
                             <button
                                 onClick={() => setShowRegenerationModal(true)}
-                                className="bg-white text-blue-600 px-4 py-2 rounded-lg font-bold shadow-lg hover:bg-blue-50 flex items-center space-x-2 transition-all"
+                                className="flex-1 md:flex-none justify-center bg-white text-blue-600 px-3 py-2 text-sm md:text-base rounded-lg font-bold shadow-lg hover:bg-blue-50 flex items-center space-x-2 transition-all"
                             >
-                                <UserPlus size={18} />
-                                <span>Regenerasi</span>
+                                <UserPlus size={16} />
+                                <span>Regen</span>
                             </button>
                         </div>
                     </div>

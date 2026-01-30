@@ -115,7 +115,7 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($users as $user) {
-            $user['password'] = Hash::make($user['password']);
+            // $user['password'] = Hash::make($user['password']); // Removed to prevent double hashing due to User model cast
             User::create($user);
         }
 

@@ -56,8 +56,13 @@ export const ProgramKerja = ({ prokers, setProkers, members }: { prokers: any[],
                     setToastMessage('Proker created successfully!');
                 })
                 .catch(err => {
-                    console.error(err);
-                    alert('Failed to create proker.');
+                    console.error('Error creating proker:', err);
+                    if (err.response && err.response.status === 401) {
+                        alert('Your session has expired. Please log in again.');
+                        window.location.reload();
+                    } else {
+                        alert(`Failed to create proker: ${err.response?.data?.message || err.message}`);
+                    }
                 });
         });
     };
@@ -289,69 +294,67 @@ export const ProgramKerja = ({ prokers, setProkers, members }: { prokers: any[],
     // LIST VIEW
     return (
         <div className="space-y-6 animate-fade-in">
-            <div>
-                <h1 className="text-2xl font-bold text-gray-800">Program Kerja</h1>
-                <p className="text-sm text-blue-500">Manage and track your organization's projects and initiatives.</p>
+            {/* Header Banner */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-8 rounded-2xl text-white mb-8 shadow-lg relative overflow-hidden">
+                <div className="relative z-10">
+                    <div className="flex items-center space-x-3 mb-2">
+                        <ListTodo size={32} className="text-blue-100" />
+                        <h1 className="text-3xl font-extrabold tracking-tight">Program Kerja</h1>
+                    </div>
+                    <p className="text-blue-100 text-lg opacity-90 max-w-2xl">
+                        Manage, track, and execute your organization's initiatives with precision.
+                    </p>
+                </div>
+                {/* Decorative Pattern */}
+                <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-white opacity-10 rounded-full blur-3xl"></div>
             </div>
 
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0 mb-6">
-                <h3 className="text-lg font-bold">Filters</h3>
-            </div>
+            {/* Filters Bar */}
+            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between mb-6">
+                <div className="flex flex-wrap gap-3 w-full md:w-auto">
+                    {/* Department Filter */}
+                    <div className="relative min-w-[150px]">
+                        <select
+                            value={prokerFilterDept}
+                            onChange={(e) => setProkerFilterDept(e.target.value)}
+                            className="w-full appearance-none bg-gray-50 px-4 py-2.5 rounded-lg pr-10 text-sm font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 border border-gray-200 hover:bg-gray-100 transition-colors cursor-pointer"
+                        >
+                            <option value="All">All Departments</option>
+                            {DEPARTMENTS.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        </select>
+                        <ChevronRight className="absolute right-3 top-1/2 transform -translate-y-1/2 rotate-90 text-gray-400 pointer-events-none" size={16} />
+                    </div>
 
-            <div className="flex flex-wrap gap-3 mb-6 items-center">
-                {/* Department Filter */}
-                <div className="relative">
-                    <select
-                        value={prokerFilterDept}
-                        onChange={(e) => setProkerFilterDept(e.target.value)}
-                        className="appearance-none bg-gray-100 px-4 py-2 rounded-lg pr-8 text-sm font-medium text-gray-700 focus:outline-none cursor-pointer border border-transparent hover:bg-gray-200"
-                    >
-                        <option value="All">Department</option>
-                        {DEPARTMENTS.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                    </select>
-                    <ChevronRight className="absolute right-2 top-1/2 transform -translate-y-1/2 rotate-90 text-gray-500 pointer-events-none" size={16} />
-                </div>
+                    {/* Status Filter */}
+                    <div className="relative min-w-[150px]">
+                        <select
+                            value={prokerFilterStatus}
+                            onChange={(e) => setProkerFilterStatus(e.target.value)}
+                            className="w-full appearance-none bg-gray-50 px-4 py-2.5 rounded-lg pr-10 text-sm font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 border border-gray-200 hover:bg-gray-100 transition-colors cursor-pointer"
+                        >
+                            <option value="All">All Statuses</option>
+                            <option value="On Progress">On Progress</option>
+                            <option value="Done">Done</option>
+                            <option value="Cancelled">Cancelled</option>
+                        </select>
+                        <ChevronRight className="absolute right-3 top-1/2 transform -translate-y-1/2 rotate-90 text-gray-400 pointer-events-none" size={16} />
+                    </div>
 
-                {/* Date Range Filter */}
-                <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-lg border border-transparent hover:bg-gray-200">
-                    <CalendarIcon size={16} className="text-gray-500" />
-                    <input
-                        type="date"
-                        value={prokerFilterStart}
-                        onChange={(e) => setProkerFilterStart(e.target.value)}
-                        className="bg-transparent text-sm text-gray-700 focus:outline-none w-28"
-                        placeholder="Start"
-                    />
-                    <span className="text-gray-400">-</span>
-                    <input
-                        type="date"
-                        value={prokerFilterEnd}
-                        onChange={(e) => setProkerFilterEnd(e.target.value)}
-                        className="bg-transparent text-sm text-gray-700 focus:outline-none w-28"
-                        placeholder="End"
-                    />
-                </div>
-
-                {/* Status Filter */}
-                <div className="relative">
-                    <select
-                        value={prokerFilterStatus}
-                        onChange={(e) => setProkerFilterStatus(e.target.value)}
-                        className="appearance-none bg-gray-100 px-4 py-2 rounded-lg pr-8 text-sm font-medium text-gray-700 focus:outline-none cursor-pointer border border-transparent hover:bg-gray-200"
-                    >
-                        <option value="All">Status</option>
-                        <option value="On Progress">On Progress</option>
-                        <option value="Done">Done</option>
-                        <option value="Cancelled">Cancelled</option>
-                    </select>
-                    <ChevronRight className="absolute right-2 top-1/2 transform -translate-y-1/2 rotate-90 text-gray-500 pointer-events-none" size={16} />
+                    {/* Date Range */}
+                    <div className="flex items-center space-x-2 bg-gray-50 px-3 py-2.5 rounded-lg border border-gray-200">
+                        <CalendarIcon size={16} className="text-gray-400" />
+                        <input type="date" value={prokerFilterStart} onChange={e => setProkerFilterStart(e.target.value)} className="bg-transparent text-sm text-gray-700 focus:outline-none w-28 font-medium cursor-pointer" />
+                        <span className="text-gray-300">|</span>
+                        <input type="date" value={prokerFilterEnd} onChange={e => setProkerFilterEnd(e.target.value)} className="bg-transparent text-sm text-gray-700 focus:outline-none w-28 font-medium cursor-pointer" />
+                    </div>
                 </div>
 
                 <button
                     onClick={() => { resetForm(); setView('create'); }}
-                    className="ml-auto bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-medium shadow-sm transition-colors"
+                    className="w-full md:w-auto bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center space-x-2 transform active:scale-95"
                 >
-                    Create Proker
+                    <Plus size={18} />
+                    <span>New Proker</span>
                 </button>
             </div>
 
