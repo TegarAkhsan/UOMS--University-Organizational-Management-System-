@@ -379,7 +379,7 @@ class DatabaseSeeder extends Seeder
 
         // Meetings
         $meetings = [
-            ['title' => 'Weekly BPH Meeting', 'date' => '2024-08-10', 'time' => '19:00', 'platform' => 'Google Meet', 'link' => 'meet.google.com/abc-defg-hij'],
+            ['title' => 'Weekly BPH Meeting', 'date' => '2024-08-10', 'time' => '19:00', 'platform' => 'Google Meet', 'link' => 'meet.google.com/abc-defg-hij', 'audience' => 'all'],
         ];
 
         foreach ($meetings as $meet) {

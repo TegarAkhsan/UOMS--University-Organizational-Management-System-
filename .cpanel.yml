@@ -1,7 +1,30 @@
 ---
+# UOMS cPanel Deployment Configuration
+# 
+# Struktur di server:
+# /home/himy9571/
+# ├── laravel/           # Backend Laravel (di luar public_html untuk keamanan)
+# │   ├── app/
+# │   ├── bootstrap/
+# │   ├── config/
+# │   ├── database/
+# │   ├── resources/
+# │   ├── routes/
+# │   ├── storage/
+# │   ├── vendor/
+# │   ├── artisan
+# │   ├── composer.json
+# │   └── composer.lock
+# └── public_html/        # Web root
+#     ├── api/            # Backend entry point (index.php)
+#     ├── assets/         # Frontend assets
+#     └── index.html      # Frontend entry
+
 deployment:
   tasks:
+    # ===== Create Directories =====
     - /bin/mkdir -p /home/himy9571/public_html
+    - /bin/mkdir -p /home/himy9571/public_html/api
     - /bin/mkdir -p /home/himy9571/laravel
     - /bin/mkdir -p /home/himy9571/laravel/app
     - /bin/mkdir -p /home/himy9571/laravel/bootstrap
@@ -10,19 +33,38 @@ deployment:
     - /bin/mkdir -p /home/himy9571/laravel/resources
     - /bin/mkdir -p /home/himy9571/laravel/routes
     - /bin/mkdir -p /home/himy9571/laravel/storage
+    - /bin/mkdir -p /home/himy9571/laravel/storage/framework/cache
+    - /bin/mkdir -p /home/himy9571/laravel/storage/framework/sessions
+    - /bin/mkdir -p /home/himy9571/laravel/storage/framework/views
+    - /bin/mkdir -p /home/himy9571/laravel/storage/logs
+    - /bin/mkdir -p /home/himy9571/laravel/bootstrap/cache
     - /bin/mkdir -p /home/himy9571/laravel/vendor
-    - /bin/mkdir -p /home/himy9571/public_html/api
+
+    # ===== Deploy Frontend =====
     - /bin/cp -R frontend/dist/. /home/himy9571/public_html/
+
+    # ===== Deploy Backend Laravel Core =====
     - /bin/cp -R backend/app/. /home/himy9571/laravel/app/
-    - /bin/cp -R backend/bootstrap/. /home/himy9571/laravel/bootstrap/
     - /bin/cp -R backend/config/. /home/himy9571/laravel/config/
     - /bin/cp -R backend/database/. /home/himy9571/laravel/database/
     - /bin/cp -R backend/resources/. /home/himy9571/laravel/resources/
     - /bin/cp -R backend/routes/. /home/himy9571/laravel/routes/
     - /bin/cp -R backend/storage/. /home/himy9571/laravel/storage/
     - /bin/cp -R backend/vendor/. /home/himy9571/laravel/vendor/
+
+    # ===== Deploy Bootstrap (Use Production Version) =====
+    - /bin/cp -R backend/bootstrap/. /home/himy9571/laravel/bootstrap/
+    - /bin/cp backend/bootstrap/app.production.php /home/himy9571/laravel/bootstrap/app.php
+
+    # ===== Deploy Public Files to API Folder =====
     - /bin/cp -R backend/public/. /home/himy9571/public_html/api/
     - /bin/cp backend/public/index.production.php /home/himy9571/public_html/api/index.php
+
+    # ===== Deploy Root Files =====
     - /bin/cp backend/artisan /home/himy9571/laravel/
     - /bin/cp backend/composer.json /home/himy9571/laravel/
     - /bin/cp backend/composer.lock /home/himy9571/laravel/
+
+    # ===== Set Permissions =====
+    - /bin/chmod -R 755 /home/himy9571/laravel/storage
+    - /bin/chmod -R 755 /home/himy9571/laravel/bootstrap/cache
