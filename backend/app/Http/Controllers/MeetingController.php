@@ -34,8 +34,7 @@ class MeetingController extends Controller
                 ->orWhere(function($q) use ($dept) {
                     $q->whereIn('audience', ['proker_coord', 'proker_all'])
                       ->whereHas('program', function($subQ) use ($dept) {
-                          $subQ->where('department_id', $dept)
-                               ->orWhere('department', $dept); // Handle both likely column names
+                          $subQ->where('department_id', $dept);
                       });
                 })
                 ->orderBy('date', 'desc')
