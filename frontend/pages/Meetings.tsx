@@ -1,9 +1,72 @@
 import React, { useState, useEffect } from 'react';
-import { Video, Clock, Link, Calendar as CalendarIcon, Plus } from 'lucide-react';
+import { Video, Clock, Link, Calendar as CalendarIcon, Plus, Trash2 } from 'lucide-react';
 import { Card } from '../components/ui/Shared';
 // import { INITIAL_MEETINGS } from '../data/mockData';
 import { useNotification } from '../components/ui/NotificationSystem';
 import client from '../src/api/client';
+
+// Helper to parse date string "YYYY-MM-DD"
+const parseDate = (dateStr: string, timeStr: string) => {
+    return new Date(`${dateStr}T${timeStr}`);
+};
+
+const MeetingCard: React.FC<{ meeting: any; user: any; onDelete: (id: number) => void }> = ({ meeting, user, onDelete }) => {
+    const now = new Date();
+    return (
+        <div className={`bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between hover:border-blue-300 transition-colors group ${parseDate(meeting.date, meeting.time) < now ? 'opacity-75' : ''}`}>
+            <div className="flex items-center space-x-4">
+                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${meeting.platform === 'Zoom' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'}`}>
+                    <Video size={24} />
+                </div>
+                <div>
+                    <h3 className="font-bold text-gray-900 text-lg">{meeting.title}</h3>
+                    <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
+                        <span className="flex items-center"><CalendarIcon size={14} className="mr-1" /> {meeting.date}</span>
+                        <span className="flex items-center"><Clock size={14} className="mr-1" /> {meeting.time}</span>
+                        <span>{meeting.platform}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                        {meeting.program ? (
+                            <div className="bg-blue-50 text-blue-600 text-xs px-2 py-1 rounded-lg font-bold border border-blue-100">
+                                Project: {meeting.program.title}
+                            </div>
+                        ) : (
+                            <div className="bg-purple-50 text-purple-600 text-xs px-2 py-1 rounded-lg font-bold border border-purple-100">
+                                {meeting.audience === 'kadep_bph' ? 'Rapat Pimpinan' : 'Global Meeting'}
+                            </div>
+                        )}
+                        {meeting.audience === 'proker_coord' && (
+                            <div className="bg-orange-50 text-orange-600 text-xs px-2 py-1 rounded-lg font-bold border border-orange-100">
+                                Koordinasi Sie
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+            <div className="flex items-center space-x-2">
+                <a
+                    href={`https://${meeting.link}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-gray-700 font-bold transition-colors"
+                >
+                    <Link size={16} />
+                    <span>Join</span>
+                </a>
+                {/* Only show delete if user matches creator */}
+                {user && user.id === meeting.created_by && (
+                    <button
+                        onClick={() => onDelete(meeting.id)}
+                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Delete Meeting"
+                    >
+                        <Trash2 size={20} />
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+};
 
 export const Meetings = ({ user, managedProkers, prokers }: { user?: any, managedProkers?: any[], prokers?: any[] }) => {
     const [meetings, setMeetings] = useState<any[]>([]);
@@ -49,6 +112,20 @@ export const Meetings = ({ user, managedProkers, prokers }: { user?: any, manage
             .catch(err => console.error(err));
     };
 
+    const handleDelete = (id: number) => {
+        if (window.confirm('Are you sure you want to delete this meeting? This action cannot be undone.')) {
+            client.delete(`/meetings/${id}`)
+                .then(() => {
+                    setMeetings(meetings.filter(m => m.id !== id));
+                    showSuccess('Meeting deleted successfully');
+                })
+                .catch(err => {
+                    console.error(err);
+                    showError(err.response?.data?.message || 'Failed to delete meeting');
+                });
+        }
+    };
+
     const handleCreate = (e: any) => {
         e.preventDefault();
 
@@ -60,7 +137,7 @@ export const Meetings = ({ user, managedProkers, prokers }: { user?: any, manage
 
         client.post('/meetings', payload)
             .then(res => {
-                setMeetings([res.data, ...meetings]);
+                setMeetings([...meetings, res.data]); // Append new meeting, let re-sort handle order if we refetch or use simple add
                 setIsCreating(false);
                 setNewMeeting({
                     title: '', date: '', time: '', platform: 'Google Meet', link: '',
@@ -75,14 +152,26 @@ export const Meetings = ({ user, managedProkers, prokers }: { user?: any, manage
             });
     };
 
+    // Filter Meetings
+    const now = new Date();
+
+
+    const upcomingMeetings = meetings.filter(m => {
+        const meetingDate = parseDate(m.date, m.time);
+        return meetingDate >= now;
+    }).sort((a, b) => parseDate(a.date, a.time).getTime() - parseDate(b.date, b.time).getTime());
+
+    const pastMeetings = meetings.filter(m => {
+        const meetingDate = parseDate(m.date, m.time);
+        return meetingDate < now;
+    }).sort((a, b) => parseDate(b.date, b.time).getTime() - parseDate(a.date, a.time).getTime()); // Descending for past
+
+
+
+
     return (
         <div className="space-y-6 animate-fade-in">
             <div className="flex justify-between items-center">
-                {/* Removed duplicate title as requested by user if rendered in dashboard with own title.
-                    However, if used standalone, it might need one.
-                    Given the request "tidak perlu ada dua tittle meetings", assuming parent handles header or we use a smaller one.
-                    Let's keep a smaller header or none if context implies.
-                    Using a smaller H2 for section title effectively. */}
                 <h2 className="text-xl font-bold text-gray-800">Scheduled Meetings</h2>
 
                 {canCreateMeeting && (
@@ -95,8 +184,6 @@ export const Meetings = ({ user, managedProkers, prokers }: { user?: any, manage
                     </button>
                 )}
             </div>
-
-            {/* Reminder Banner Removed as requested */}
 
             {isCreating && (
                 <Card className="mb-6 animate-fade-in">
@@ -185,54 +272,35 @@ export const Meetings = ({ user, managedProkers, prokers }: { user?: any, manage
                 </Card>
             )}
 
-            <div className="grid gap-4">
-                {meetings.length === 0 ? (
-                    <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
-                        <p className="text-gray-500 font-medium">Belum ada Jadwal Meeting</p>
-                    </div>
-                ) : (
-                    meetings.map(meeting => (
-                        <div key={meeting.id} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between hover:border-blue-300 transition-colors">
-                            <div className="flex items-center space-x-4">
-                                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${meeting.platform === 'Zoom' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'}`}>
-                                    <Video size={24} />
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-gray-900 text-lg">{meeting.title}</h3>
-                                    <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
-                                        <span className="flex items-center"><CalendarIcon size={14} className="mr-1" /> {meeting.date}</span>
-                                        <span className="flex items-center"><Clock size={14} className="mr-1" /> {meeting.time}</span>
-                                        <span>{meeting.platform}</span>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2 mt-2">
-                                        {meeting.program ? (
-                                            <div className="bg-blue-50 text-blue-600 text-xs px-2 py-1 rounded-lg font-bold border border-blue-100">
-                                                Project: {meeting.program.title}
-                                            </div>
-                                        ) : (
-                                            <div className="bg-purple-50 text-purple-600 text-xs px-2 py-1 rounded-lg font-bold border border-purple-100">
-                                                {meeting.audience === 'kadep_bph' ? 'Rapat Pimpinan' : 'Global Meeting'}
-                                            </div>
-                                        )}
-                                        {meeting.audience === 'proker_coord' && (
-                                            <div className="bg-orange-50 text-orange-600 text-xs px-2 py-1 rounded-lg font-bold border border-orange-100">
-                                                Koordinasi Sie
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+            <div className="space-y-8">
+                {/* UPCOMING */}
+                <div>
+                    <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <span className="w-2 h-8 bg-blue-500 rounded-full mr-3"></span>
+                        Akan Datang ({upcomingMeetings.length})
+                    </h3>
+                    <div className="grid gap-4">
+                        {upcomingMeetings.length === 0 ? (
+                            <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                                <p className="text-gray-500 text-sm">Tidak ada jadwal meeting akan datang.</p>
                             </div>
-                            <a
-                                href={`https://${meeting.link}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-gray-700 font-bold transition-colors"
-                            >
-                                <Link size={16} />
-                                <span>Join</span>
-                            </a>
+                        ) : (
+                            upcomingMeetings.map(meeting => <MeetingCard key={meeting.id} meeting={meeting} user={user} onDelete={handleDelete} />)
+                        )}
+                    </div>
+                </div>
+
+                {/* PAST */}
+                {pastMeetings.length > 0 && (
+                    <div>
+                        <h3 className="text-lg font-bold text-gray-500 mb-4 flex items-center">
+                            <span className="w-2 h-8 bg-gray-300 rounded-full mr-3"></span>
+                            Terlaksana ({pastMeetings.length})
+                        </h3>
+                        <div className="grid gap-4 opacity-75 grayscale-[0.5] hover:grayscale-0 transition-all duration-300">
+                            {pastMeetings.map(meeting => <MeetingCard key={meeting.id} meeting={meeting} user={user} onDelete={handleDelete} />)}
                         </div>
-                    ))
+                    </div>
                 )}
             </div>
         </div>

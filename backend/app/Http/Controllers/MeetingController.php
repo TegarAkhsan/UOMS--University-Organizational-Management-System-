@@ -112,7 +112,22 @@ class MeetingController extends Controller
             'program_id' => 'nullable|exists:programs,id'
         ]);
 
+        $validated['created_by'] = $request->user()->id;
+
         $meeting = \App\Models\Meeting::create($validated);
         return response()->json($meeting, 201);
+    }
+
+    public function destroy(Request $request, \App\Models\Meeting $meeting)
+    {
+        $user = $request->user();
+
+        // Only creator can delete checking created_by
+        if ($meeting->created_by !== $user->id) {
+            return response()->json(['message' => 'Unauthorized. Only the creator can delete this meeting.'], 403);
+        }
+
+        $meeting->delete();
+        return response()->json(['message' => 'Meeting deleted successfully']);
     }
 }
