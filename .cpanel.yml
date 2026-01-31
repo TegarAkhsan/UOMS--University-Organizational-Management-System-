@@ -22,6 +22,7 @@ deployment:
     - /bin/cp -R backend/storage/. /home/himy9571/laravel/storage/
     - /bin/cp -R backend/vendor/. /home/himy9571/laravel/vendor/
     - /bin/cp -R backend/public/. /home/himy9571/public_html/api/
+    - /bin/cp backend/public/index.production.php /home/himy9571/public_html/api/index.php
     - /bin/cp backend/artisan /home/himy9571/laravel/
     - /bin/cp backend/composer.json /home/himy9571/laravel/
     - /bin/cp backend/composer.lock /home/himy9571/laravel/
