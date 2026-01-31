@@ -1,0 +1,38 @@
+---
+deployment:
+  tasks:
+    # =====================================================
+    # UOMS PROJECT - cPanel Deployment Configuration
+    # =====================================================
+    # This configuration:
+    # - Does NOT delete existing files in public_html
+    # - Deploys frontend dist to public_html
+    # - Deploys backend to ~/api_backend folder
+    # =====================================================
+
+    # Frontend Deployment: Copy built dist to public_html
+    - export DEPLOYPATH=/home/himy9571/public_html
+    - /bin/cp -R frontend/dist/* $DEPLOYPATH/
+
+    # Backend Deployment: Copy to api_backend (outside public_html for security)
+    - export APIPATH=/home/himy9571/api_backend
+    - /bin/mkdir -p $APIPATH
+
+    # Copy backend folders
+    - /bin/cp -R backend/app $APIPATH/
+    - /bin/cp -R backend/bootstrap $APIPATH/
+    - /bin/cp -R backend/config $APIPATH/
+    - /bin/cp -R backend/database $APIPATH/
+    - /bin/cp -R backend/resources $APIPATH/
+    - /bin/cp -R backend/routes $APIPATH/
+    - /bin/cp -R backend/storage $APIPATH/
+    - /bin/cp -R backend/public $APIPATH/
+
+    # Copy backend files
+    - /bin/cp backend/artisan $APIPATH/
+    - /bin/cp backend/composer.json $APIPATH/
+    - /bin/cp backend/composer.lock $APIPATH/
+
+    # Note: .env file should be configured manually on server for security
+    # Note: vendor folder should be installed via SSH:
+    #       cd ~/api_backend && composer install --no-dev --optimize-autoloader

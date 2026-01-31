@@ -12,7 +12,15 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Register middleware aliases
+        $middleware->alias([
+            'sanitize' => \App\Http\Middleware\SanitizeInput::class,
+        ]);
+        
+        // Append to API middleware group
+        $middleware->api(append: [
+            \App\Http\Middleware\SanitizeInput::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

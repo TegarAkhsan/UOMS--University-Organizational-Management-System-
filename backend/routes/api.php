@@ -26,7 +26,7 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::apiResource('departments', DepartmentController::class);
     Route::apiResource('letters', LetterController::class);
     Route::apiResource('programs', ProgramController::class);

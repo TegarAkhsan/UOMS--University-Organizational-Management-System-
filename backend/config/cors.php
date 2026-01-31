@@ -20,6 +20,10 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
+        // Production
+        'https://himaforticunesa.my.id',
+        'https://www.himaforticunesa.my.id',
+        // Development
         'http://localhost:5173',
         'http://localhost:3000',
         'http://127.0.0.1:5173',
