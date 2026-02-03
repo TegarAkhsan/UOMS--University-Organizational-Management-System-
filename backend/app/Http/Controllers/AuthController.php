@@ -15,8 +15,11 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        if (Auth::attempt($credentials)) {
-            $user = Auth::user();
+        // Bypass global scope during login - users should login regardless of period
+        $user = User::withoutGlobalScopes()->where('email', $credentials['email'])->first();
+
+        if ($user && \Illuminate\Support\Facades\Hash::check($credentials['password'], $user->password)) {
+            Auth::login($user);
             $token = $user->createToken('auth_token')->plainTextToken;
 
             return response()->json([

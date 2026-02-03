@@ -37,6 +37,8 @@ const Meetings = React.lazy(() => import('./pages/Meetings').then(m => ({ defaul
 const Surat = React.lazy(() => import('./pages/Surat').then(m => ({ default: m.Surat })));
 const WorkDistribution = React.lazy(() => import('./pages/WorkDistribution').then(m => ({ default: m.WorkDistribution })));
 const Chat = React.lazy(() => import('./pages/Chat').then(m => ({ default: m.Chat })));
+const Regenerasi = React.lazy(() => import('./pages/Regenerasi').then(m => ({ default: m.Regenerasi })));
+const ArchivedPeriods = React.lazy(() => import('./pages/ArchivedPeriods').then(m => ({ default: m.ArchivedPeriods })));
 
 export default function App() {
   const [user, setUser] = useState<any>(null);
@@ -73,6 +75,7 @@ export default function App() {
 
   const handleLogin = (userData: any) => {
     setUser(userData);
+    refreshData(); // Fetch fresh data for the new user
   };
 
 
@@ -120,6 +123,8 @@ export default function App() {
               <Route path="/meetings" element={<Meetings user={user} prokers={prokers} />} />
               <Route path="/chat" element={<Chat />} />
               <Route path="/work-distribution" element={<WorkDistribution user={user} members={members} prokers={prokers} />} />
+              <Route path="/regenerasi" element={<Regenerasi />} />
+              <Route path="/archives" element={<ArchivedPeriods />} />
             </Route>
 
             {/* Error Routes */}

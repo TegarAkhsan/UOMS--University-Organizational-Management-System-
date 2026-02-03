@@ -19,8 +19,17 @@ class Letter extends Model
         'status',
         'type',
         'file_path',
-        'feedback'
+        'feedback',
+        'period_id',
     ];
+
+    /**
+     * The "booted" method of the model.
+     */
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new \App\Models\Scopes\CurrentPeriodScope);
+    }
 
     public function program()
     {

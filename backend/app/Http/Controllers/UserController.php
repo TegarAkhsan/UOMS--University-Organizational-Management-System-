@@ -8,7 +8,15 @@ class UserController extends Controller
 {
     public function index()
     {
-        return response()->json(\App\Models\User::with('department')->get());
+        // Filter users by the logged-in user's period context
+        $currentUser = auth()->user();
+        $targetPeriodId = $currentUser->period_id ?? \App\Models\Period::where('is_active', true)->value('id');
+
+        $users = \App\Models\User::with('department')
+            ->where('period_id', $targetPeriodId)
+            ->get();
+
+        return response()->json($users);
     }
 
     public function store(Request $request)
@@ -40,8 +48,17 @@ class UserController extends Controller
              }
         }
 
-        $validated['password'] = bcrypt($validated['password']);
+        // Assign to the creator's period context
+        $currentUser = $request->user();
+        $validated['period_id'] = $currentUser->period_id ?? \App\Models\Period::where('is_active', true)->value('id');
+
+        $validated['points'] = $validated['points'] ?? 0;
+        
+        // Hash password handled by model cast or mutator ideally, but explicit here if needed
+        // $validated['password'] = Hash::make($validated['password']); 
+
         $user = \App\Models\User::create($validated);
+
         return response()->json($user, 201);
     }
     public function update(Request $request, $id)
@@ -94,5 +111,71 @@ class UserController extends Controller
 
         return response()->json(['message' => 'User deleted successfully']);
     }
-}
 
+    /**
+     * Get top contributor for current period (highest points)
+     * Excludes BPH roles as they have fixed 1000 points
+     */
+    public function topContributor()
+    {
+        // Use user's assigned period if available, otherwise default to active period
+        $user = auth()->user();
+        $periodId = $user->period_id ?? \App\Models\Period::where('is_active', true)->value('id');
+
+        $activePeriod = \App\Models\Period::find($periodId);
+        
+        if (!$activePeriod) {
+            return response()->json(null);
+        }
+
+        // BPH roles that are excluded from top contributor (they have fixed 1000 points)
+        $excludedRoles = [
+            'Kahima', 'Ketua Himpunan',
+            'Wakil Kahima', 'Wakil Ketua Himpunan',
+            'Sekretaris Umum', 'Sekretaris 1', 'Sekretaris 2',
+            'Bendahara Umum', 'Bendahara 1', 'Bendahara 2',
+        ];
+
+        // Get user with highest points in current period, excluding BPH
+        $topUser = \App\Models\User::where('period_id', $activePeriod->id)
+            ->whereNotIn('role', $excludedRoles)
+            ->where('points', '>', 0) // Must have earned points
+            ->orderByDesc('points')
+            ->first();
+
+        if (!$topUser) {
+            return response()->json(null);
+        }
+
+        // Count projects led by this user
+        $projectsLed = \App\Models\Program::withoutGlobalScope(\App\Models\Scopes\CurrentPeriodScope::class)
+            ->where('period_id', $activePeriod->id)
+            ->where('leader_name', $topUser->name)
+            ->count();
+
+        // Count tasks completed by this user
+        // Note: Task model usually doesn't have period_id directly, it relies on Program.
+        // But we need to make sure the Program query inside whereHas bypasses the scope.
+        $tasksCompleted = \App\Models\Task::whereHas('program', function($q) use ($topUser, $activePeriod) {
+                $q->withoutGlobalScope(\App\Models\Scopes\CurrentPeriodScope::class)
+                  ->where('period_id', $activePeriod->id)
+                  ->where('leader_name', $topUser->name);
+            })
+            ->where('status', 'done')
+            ->count();
+
+        // Only return if there's meaningful contribution
+        if ($projectsLed == 0 && $tasksCompleted == 0 && $topUser->points <= 25) {
+            return response()->json(null);
+        }
+
+        return response()->json([
+            'id' => $topUser->id,
+            'name' => $topUser->name,
+            'points' => $topUser->points ?? 0,
+            'avatar' => $topUser->profile_photo_path ?? null,
+            'projects_led' => $projectsLed,
+            'tasks_completed' => $tasksCompleted,
+        ]);
+    }
+}

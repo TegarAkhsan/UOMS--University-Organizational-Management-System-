@@ -14,7 +14,16 @@ class Transaction extends Model
         'date',
         'status',
         'category',
-        'payment_method'
+        'payment_method',
+        'period_id',
     ];
+
+    /**
+     * The "booted" method of the model.
+     */
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new \App\Models\Scopes\CurrentPeriodScope);
+    }
     //
 }

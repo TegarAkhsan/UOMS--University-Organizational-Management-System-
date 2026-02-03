@@ -16,6 +16,7 @@ use App\Http\Controllers\LetterRequestController;
 use App\Http\Controllers\DocumentTemplateController;
 use App\Http\Controllers\BudgetCodeController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\DashboardController;
 
 use App\Http\Controllers\AuthController;
 
@@ -27,6 +28,7 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
+    Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
     Route::apiResource('departments', DepartmentController::class);
     Route::apiResource('letters', LetterController::class);
     Route::apiResource('programs', ProgramController::class);
@@ -34,6 +36,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::apiResource('transactions', TransactionController::class);
     Route::apiResource('meetings', MeetingController::class);
     Route::apiResource('assistances', AssistanceController::class);
+    Route::get('/users/top-contributor', [UserController::class, 'topContributor']);
     Route::apiResource('users', UserController::class);
     Route::apiResource('tasks', TaskController::class);
 
@@ -60,4 +63,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::delete('/cash-collections/{id}', [App\Http\Controllers\CashController::class, 'destroy']);
     Route::get('/cash-collections/{id}/payments', [App\Http\Controllers\CashController::class, 'getPayments']);
     Route::post('/cash-payments/toggle', [App\Http\Controllers\CashController::class, 'togglePayment']);
+
+    // Regenerasi Routes
+    Route::get('/periods', [App\Http\Controllers\RegenerasiController::class, 'index']);
+    Route::post('/regenerasi', [App\Http\Controllers\RegenerasiController::class, 'store']);
+    Route::get('/periods/{id}', [App\Http\Controllers\RegenerasiController::class, 'show']);
 });

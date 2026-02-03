@@ -8,7 +8,15 @@ use App\Models\User;
 
 class CashCollection extends Model
 {
-    protected $fillable = ['title', 'amount', 'created_by'];
+    protected $fillable = ['title', 'amount', 'created_by', 'period_id'];
+
+    /**
+     * The "booted" method of the model.
+     */
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new \App\Models\Scopes\CurrentPeriodScope);
+    }
 
     public function payments()
     {

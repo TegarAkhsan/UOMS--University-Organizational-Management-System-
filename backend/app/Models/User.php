@@ -31,7 +31,12 @@ class User extends Authenticatable
         'point_history',
         'violations',
         'violation_history',
+        'period_id',
     ];
+
+    // NOTE: CurrentPeriodScope removed from User model.
+    // Authentication depends on User model without period filtering.
+    // Period filtering for users is done explicitly in UserController.
 
     /**
      * The attributes that should be hidden for serialization.

@@ -20,7 +20,10 @@ export const Layout = ({ user, onLogout }: { user: any, onLogout: () => void }) 
         if (path.includes('/asistensi')) return 'Asistensi';
         if (path.includes('/calendar')) return 'Calendar';
         if (path.includes('/meetings')) return 'Meetings';
+        if (path.includes('/meetings')) return 'Meetings';
         if (path.includes('/work-distribution')) return 'Work Dist.';
+        if (path.includes('/regenerasi')) return 'Regenerasi';
+        if (path.includes('/archives')) return 'Archives';
         return 'Dashboard';
     };
 

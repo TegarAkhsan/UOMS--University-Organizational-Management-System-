@@ -16,7 +16,21 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Departments
+        // Get Active Period ID (created by migration)
+        $activePeriodId = DB::table('periods')->where('is_active', true)->value('id');
+        if (!$activePeriodId) {
+            // Create a default period if none exists
+            $activePeriodId = DB::table('periods')->insertGetId([
+                'name' => 'Periode Awal 2024-2025',
+                'start_year' => 2024,
+                'end_year' => 2025,
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        // Departments (Global - No period_id needed)
         $departments = [
             ['id' => 'BPH', 'name' => 'BPH', 'full_name' => 'Badan Pengurus Harian', 'description' => 'Badan Pengurus Harian bertanggung jawab atas koordinasi seluruh kegiatan organisasi.', 'head_name' => 'Tegar Eka Pambudi El Akhsan'],
             ['id' => 'PSDM', 'name' => 'PSDM', 'full_name' => 'Pengembangan Sumber Daya Mahasiswa', 'description' => 'Fungsi Departemen PSDM adalah pada kaderisasi...', 'head_name' => 'Fina Fadhilah Maulana'],
@@ -115,7 +129,8 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($users as $user) {
-            // $user['password'] = Hash::make($user['password']); // Removed to prevent double hashing due to User model cast
+            // Add period_id to user data
+            $user['period_id'] = $activePeriodId;
             User::create($user);
         }
 
@@ -355,6 +370,7 @@ class DatabaseSeeder extends Seeder
             // SC Logic Removed Per User Request
             // BPH is now handled as a global supervisor by role, not a specific Sie
             $prog['sies'] = []; // Initialize empty or with other default sies if needed
+            $prog['period_id'] = $activePeriodId;
 
             Program::create($prog);
 
@@ -374,6 +390,7 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($transactions as $trans) {
+            $trans['period_id'] = $activePeriodId;
             Transaction::create($trans);
         }
 
@@ -383,6 +400,7 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($meetings as $meet) {
+            $meet['period_id'] = $activePeriodId;
             Meeting::create($meet);
         }
     }

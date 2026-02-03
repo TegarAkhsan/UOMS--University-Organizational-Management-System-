@@ -12,23 +12,6 @@ import {
 } from 'recharts';
 import { DEPARTMENTS } from '../../../data/mockData';
 
-// Mock data for charts (can be replaced with real data later)
-const activityData = [
-    { name: 'Jan', prokers: 4, completed: 2 },
-    { name: 'Feb', prokers: 6, completed: 3 },
-    { name: 'Mar', prokers: 8, completed: 5 },
-    { name: 'Apr', prokers: 5, completed: 4 },
-    { name: 'May', prokers: 9, completed: 6 },
-    { name: 'Jun', prokers: 12, completed: 8 },
-];
-
-const financeData = [
-    { name: 'Week 1', income: 500000, expense: 200000 },
-    { name: 'Week 2', income: 750000, expense: 400000 },
-    { name: 'Week 3', income: 1200000, expense: 800000 },
-    { name: 'Week 4', income: 900000, expense: 300000 },
-];
-
 export const KahimaDashboard = ({ user, onLogout }: any) => {
     const navigate = useNavigate();
     const [stats, setStats] = useState({
@@ -37,6 +20,19 @@ export const KahimaDashboard = ({ user, onLogout }: any) => {
         totalBalance: 0,
         pendingAssistance: 0
     });
+    const [trends, setTrends] = useState({
+        prokersTrend: 'No change',
+        prokersTrendUp: false,
+        completedTrend: 'No completed yet',
+        completedTrendUp: false,
+        balanceTrend: 'No change',
+        balanceTrendUp: false,
+        assistanceTrend: 'All clear',
+        assistanceTrendUp: true,
+    });
+    const [financialData, setFinancialData] = useState<any[]>([]);
+    const [activityData, setActivityData] = useState<any[]>([]);
+    const [topContributor, setTopContributor] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
     // Regeneration & Cabinet Setup State
@@ -54,41 +50,23 @@ export const KahimaDashboard = ({ user, onLogout }: any) => {
             try {
                 const { default: client } = await import('../../../src/api/client');
 
-                // Fetch Programs
-                const prokersRes = await client.get('/programs');
-                const prokers = prokersRes.data;
-                console.log('Fetched Prokers:', prokers);
+                // Fetch Dashboard Stats (all-in-one)
+                const dashboardRes = await client.get('/dashboard/stats');
+                const data = dashboardRes.data;
+                console.log('Dashboard Stats:', data);
 
-                // Normalize status to lowercase for comparison
-                const active = prokers.filter((p: any) => {
-                    const s = (p.status || '').toLowerCase();
-                    return s === 'on progress' || s === 'pending' || s === 'on_progress';
-                }).length;
+                setStats(data.cards);
+                setTrends(data.trends);
+                setFinancialData(data.financialData || []);
+                setActivityData(data.activityData || []);
 
-                const completed = prokers.filter((p: any) => {
-                    const s = (p.status || '').toLowerCase();
-                    return s === 'done' || s === 'completed' || s === 'finish';
-                }).length;
-
-                // Fetch Transactions for Saldo Himpunan (Matching Keuangan Page Logic)
-                const transactionsRes = await client.get('/transactions');
-                const transactions = transactionsRes.data;
-                console.log('Fetched Transactions:', transactions);
-
-                const income = transactions.filter((t: any) => t.type === 'Income' && t.status === 'Approved').reduce((acc: number, curr: any) => Number(acc) + Number(curr.amount), 0);
-                const expense = transactions.filter((t: any) => t.type === 'Expense' && t.status === 'Approved').reduce((acc: number, curr: any) => Number(acc) + Number(curr.amount), 0);
-                const totalSaldo = income - expense;
-
-                // Fetch Assistance (Mock or Real if endpoint exists)
-                // const assistRes = await client.get('/assistances?status=pending');
-                const pendingAssist = 0; // Placeholder
-
-                setStats({
-                    activeProkers: active,
-                    completedProkers: completed,
-                    totalBalance: totalSaldo,
-                    pendingAssistance: pendingAssist
-                });
+                // Fetch Top Contributor
+                try {
+                    const topRes = await client.get('/users/top-contributor');
+                    setTopContributor(topRes.data);
+                } catch (err) {
+                    console.error('Error fetching top contributor:', err);
+                }
             } catch (error) {
                 console.error("Error fetching dashboard data:", error);
             } finally {
@@ -215,32 +193,32 @@ export const KahimaDashboard = ({ user, onLogout }: any) => {
                         value={stats.activeProkers}
                         icon={Briefcase}
                         color="blue"
-                        trend="+2 this week"
-                        trendUp={true}
+                        trend={trends.prokersTrend}
+                        trendUp={trends.prokersTrendUp}
                     />
                     <StatCard
                         title="Completed Prokers"
                         value={stats.completedProkers}
                         icon={CheckCircle}
                         color="green"
-                        trend="On track"
-                        trendUp={true}
+                        trend={trends.completedTrend}
+                        trendUp={trends.completedTrendUp}
                     />
                     <StatCard
                         title="Saldo Himpunan"
                         value={formatCurrency(stats.totalBalance)}
                         icon={Wallet}
                         color="purple"
-                        trend="+15% vs last month"
-                        trendUp={true}
+                        trend={trends.balanceTrend}
+                        trendUp={trends.balanceTrendUp}
                     />
                     <StatCard
                         title="Pending Assistance"
                         value={stats.pendingAssistance}
                         icon={MessageSquare}
                         color="orange"
-                        trend="Needs review"
-                        trendUp={false}
+                        trend={trends.assistanceTrend}
+                        trendUp={trends.assistanceTrendUp}
                     />
                 </div>
 
@@ -295,7 +273,7 @@ export const KahimaDashboard = ({ user, onLogout }: any) => {
                             </div>
                             <div className="h-64">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={financeData} barSize={20}>
+                                    <BarChart data={financialData} barSize={20}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} />
                                         <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} />
@@ -321,25 +299,38 @@ export const KahimaDashboard = ({ user, onLogout }: any) => {
                                     </div>
                                     <h3 className="font-bold text-lg">Top Contributor</h3>
                                 </div>
-                                <div className="flex items-center gap-4 mb-6">
-                                    <div className="w-16 h-16 rounded-full border-2 border-yellow-400 p-1">
-                                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="Top User" className="w-full h-full rounded-full bg-gray-700" />
+                                {topContributor ? (
+                                    <>
+                                        <div className="flex items-center gap-4 mb-6">
+                                            <div className="w-16 h-16 rounded-full border-2 border-yellow-400 p-1">
+                                                <img
+                                                    src={topContributor.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(topContributor.name)}`}
+                                                    alt="Top User"
+                                                    className="w-full h-full rounded-full bg-gray-700"
+                                                />
+                                            </div>
+                                            <div>
+                                                <p className="text-xl font-bold">{topContributor.name}</p>
+                                                <p className="text-gray-400 text-sm">{topContributor.points} Points Earned</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-400">Projects Led</span>
+                                                <span className="font-bold">{topContributor.projects_led}</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-400">Tasks Completed</span>
+                                                <span className="font-bold">{topContributor.tasks_completed}</span>
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="text-center py-4 text-gray-400">
+                                        <p>No contributors yet</p>
+                                        <p className="text-sm">Add team members to see stats</p>
                                     </div>
-                                    <div>
-                                        <p className="text-xl font-bold">Tegar Eka Pambudi</p>
-                                        <p className="text-gray-400 text-sm">1180 Points Earned</p>
-                                    </div>
-                                </div>
-                                <div className="space-y-3">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-gray-400">Projects Led</span>
-                                        <span className="font-bold">5</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-gray-400">Tasks Completed</span>
-                                        <span className="font-bold">42</span>
-                                    </div>
-                                </div>
+                                )}
                             </div>
                             <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-yellow-500 rounded-full mix-blend-overlay filter blur-3xl opacity-20"></div>
                         </div>

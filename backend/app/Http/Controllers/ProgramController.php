@@ -9,7 +9,15 @@ class ProgramController extends Controller
 {
     public function index()
     {
-        return response()->json(Program::with(['department', 'tasks'])->get());
+        // Explicitly filter by user's period context for safety
+        // AND bypass Global Scope to avoid conflict (e.g. if Global Scope falls back to ActiveID)
+        $user = auth()->user();
+        $targetPeriodId = $user->period_id ?? \App\Models\Period::where('is_active', true)->value('id');
+
+        return response()->json(Program::withoutGlobalScope(\App\Models\Scopes\CurrentPeriodScope::class)
+            ->with(['department', 'tasks'])
+            ->where('period_id', $targetPeriodId)
+            ->get());
     }
 
     public function store(Request $request)
