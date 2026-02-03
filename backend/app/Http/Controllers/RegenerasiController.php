@@ -24,8 +24,9 @@ class RegenerasiController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'new_kahima_name' => 'required|string',
+            'new_kahima_nim' => 'required|string',
             'new_kahima_email' => 'required|email|unique:users,email',
             'new_kahima_password' => 'required|min:8',
             'current_password' => 'required',
@@ -62,14 +63,14 @@ class RegenerasiController extends Controller
             // 3. Create New Kahima User
             // Assign to new period, but ROLE is superadmin/kahima.
             $newKahima = User::create([
-                'name' => $request->new_kahima_name,
-                'email' => $request->new_kahima_email,
-                'password' => $request->new_kahima_password, // Will be hashed by model cast
+                'name' => $validated['new_kahima_name'],
+                'email' => $validated['new_kahima_email'],
+                'password' => $validated['new_kahima_password'], // Will be hashed by model cast
                 'role' => 'Kahima',
                 'status' => 'superadmin',
                 'period_id' => $newPeriod->id,
                 'department_id' => 'BPH',
-                'nim' => '000000000', // Placeholder
+                'nim' => $validated['new_kahima_nim'],
             ]);
 
             DB::commit();
