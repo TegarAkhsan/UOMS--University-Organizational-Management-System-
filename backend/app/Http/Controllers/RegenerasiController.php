@@ -71,6 +71,7 @@ class RegenerasiController extends Controller
                 'period_id' => $newPeriod->id,
                 'department_id' => 'BPH',
                 'nim' => $validated['new_kahima_nim'],
+                'points' => 1000,
             ]);
 
             DB::commit();

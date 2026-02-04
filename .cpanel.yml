@@ -2,7 +2,7 @@
 # UOMS cPanel Deployment Configuration
 # 
 # Struktur di server:
-# /home/hlmy9571/
+# /home/himy9571/
 # ├── laravel/           # Backend Laravel (di luar public_html untuk keamanan)
 # │   ├── app/
 # │   ├── bootstrap/

@@ -41,6 +41,10 @@ class ProgramController extends Controller
             'is_archived' => 'nullable|boolean',
         ]);
 
+        // Assign to user's period context
+        $user = auth()->user();
+        $validated['period_id'] = $user->period_id ?? \App\Models\Period::where('is_active', true)->value('id');
+
         $program = Program::create($validated);
         $this->assignRolesAndPoints($program);
         return response()->json($program, 201);

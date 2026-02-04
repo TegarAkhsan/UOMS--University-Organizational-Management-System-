@@ -52,7 +52,11 @@ class UserController extends Controller
         $currentUser = $request->user();
         $validated['period_id'] = $currentUser->period_id ?? \App\Models\Period::where('is_active', true)->value('id');
 
-        $validated['points'] = $validated['points'] ?? 0;
+        if (isset($validated['department_id']) && $validated['department_id'] === 'BPH') {
+            $validated['points'] = 1000;
+        } else {
+            $validated['points'] = $validated['points'] ?? 0;
+        }
         
         // Hash password handled by model cast or mutator ideally, but explicit here if needed
         // $validated['password'] = Hash::make($validated['password']); 

@@ -40,10 +40,17 @@ export const KahimaDashboard = ({ user, onLogout }: any) => {
     const [showCabinetSetupModal, setShowCabinetSetupModal] = useState(false);
     const [nextYear, setNextYear] = useState(new Date().getFullYear() + 1);
     const [cabinetData, setCabinetData] = useState<any>({
+        wakil: '',
         sekum: '',
+        sek1: '',
+        sek2: '',
         bendum: '',
+        ben1: '',
+        ben2: '',
         kadeps: {}
     });
+    const [createdAccounts, setCreatedAccounts] = useState<any[]>([]);
+    const [showResultsModal, setShowResultsModal] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -111,6 +118,8 @@ export const KahimaDashboard = ({ user, onLogout }: any) => {
             const year = new Date().getFullYear(); // Current year context for setup
             const password = `himafortic${year}`;
 
+            const newAccounts: any[] = [];
+
             const createAccount = async (role: string, dept: string, status: string, name: string, emailPrefix: string) => {
                 if (!name) return;
                 const email = `${emailPrefix}.${year}@himaforticunesa.com`;
@@ -126,28 +135,43 @@ export const KahimaDashboard = ({ user, onLogout }: any) => {
                 try {
                     await client.post('/users', formData);
                     console.log(`Created: ${email}`);
+                    newAccounts.push({ name, email, password, role });
                 } catch (e) {
                     console.error(`Failed: ${email}`, e);
                 }
             };
 
-            // Create Sekum
-            await createAccount('Sekretaris Umum', 'BPH', 'sub_super_admin_2', cabinetData.sekum, 'sekum');
+            // Create Wakil
+            await createAccount('Wakil Ketua Himpunan', 'BPH', 'sub_super_admin_2', cabinetData.wakil, 'wakil');
 
-            // Create Bendum
+            // Create Sekum & Seks
+            await createAccount('Sekretaris Umum', 'BPH', 'sub_super_admin_2', cabinetData.sekum, 'sekum');
+            await createAccount('Sekretaris 1', 'BPH', 'sub_super_admin_2', cabinetData.sek1, 'sekretaris1');
+            await createAccount('Sekretaris 2', 'BPH', 'sub_super_admin_2', cabinetData.sek2, 'sekretaris2');
+
+            // Create Bendum & Bens
             await createAccount('Bendahara Umum', 'BPH', 'sub_super_admin_1', cabinetData.bendum, 'bendum');
+            await createAccount('Bendahara 1', 'BPH', 'sub_super_admin_1', cabinetData.ben1, 'bendahara1');
+            await createAccount('Bendahara 2', 'BPH', 'sub_super_admin_1', cabinetData.ben2, 'bendahara2');
 
             // Create Kadeps
             for (const [deptId, name] of Object.entries(cabinetData.kadeps)) {
                 await createAccount('Ketua Departemen', deptId, 'admin', name as string, `kadep.${deptId.toLowerCase()}`);
             }
 
-            alert('Cabinet setup complete! Accounts created with default password: ' + password);
+            setCreatedAccounts(newAccounts);
             setShowCabinetSetupModal(false);
+            setShowResultsModal(true);
         } catch (error) {
             console.error(error);
             alert('An error occurred during setup.');
         }
+    };
+
+    const copyToClipboard = () => {
+        const text = createdAccounts.map(acc => `Name: ${acc.name}\nEmail: ${acc.email}\nPassword: ${acc.password}\nRole: ${acc.role}`).join('\n\n');
+        navigator.clipboard.writeText(text);
+        alert('Copied to clipboard!');
     };
 
     return (
@@ -415,25 +439,82 @@ export const KahimaDashboard = ({ user, onLogout }: any) => {
                     {/* BPH Inti */}
                     <div className="space-y-3">
                         <h3 className="font-bold text-gray-800 border-b pb-1">BPH Inti</h3>
+
                         <div>
-                            <label className="block text-xs font-bold text-gray-600">Sekretaris Umum</label>
+                            <label className="block text-xs font-bold text-gray-600">Wakil Ketua Himpunan</label>
                             <input
                                 type="text"
                                 placeholder="Full Name"
                                 className="w-full p-2 border rounded text-sm"
-                                value={cabinetData.sekum}
-                                onChange={(e) => setCabinetData({ ...cabinetData, sekum: e.target.value })}
+                                value={cabinetData.wakil}
+                                onChange={(e) => setCabinetData({ ...cabinetData, wakil: e.target.value })}
                             />
                         </div>
-                        <div>
-                            <label className="block text-xs font-bold text-gray-600">Bendahara Umum</label>
-                            <input
-                                type="text"
-                                placeholder="Full Name"
-                                className="w-full p-2 border rounded text-sm"
-                                value={cabinetData.bendum}
-                                onChange={(e) => setCabinetData({ ...cabinetData, bendum: e.target.value })}
-                            />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600">Sekretaris Umum</label>
+                                <input
+                                    type="text"
+                                    placeholder="Full Name"
+                                    className="w-full p-2 border rounded text-sm"
+                                    value={cabinetData.sekum}
+                                    onChange={(e) => setCabinetData({ ...cabinetData, sekum: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600">Sekretaris 1</label>
+                                <input
+                                    type="text"
+                                    placeholder="Full Name"
+                                    className="w-full p-2 border rounded text-sm"
+                                    value={cabinetData.sek1}
+                                    onChange={(e) => setCabinetData({ ...cabinetData, sek1: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600">Sekretaris 2</label>
+                                <input
+                                    type="text"
+                                    placeholder="Full Name"
+                                    className="w-full p-2 border rounded text-sm"
+                                    value={cabinetData.sek2}
+                                    onChange={(e) => setCabinetData({ ...cabinetData, sek2: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600">Bendahara Umum</label>
+                                <input
+                                    type="text"
+                                    placeholder="Full Name"
+                                    className="w-full p-2 border rounded text-sm"
+                                    value={cabinetData.bendum}
+                                    onChange={(e) => setCabinetData({ ...cabinetData, bendum: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600">Bendahara 1</label>
+                                <input
+                                    type="text"
+                                    placeholder="Full Name"
+                                    className="w-full p-2 border rounded text-sm"
+                                    value={cabinetData.ben1}
+                                    onChange={(e) => setCabinetData({ ...cabinetData, ben1: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600">Bendahara 2</label>
+                                <input
+                                    type="text"
+                                    placeholder="Full Name"
+                                    className="w-full p-2 border rounded text-sm"
+                                    value={cabinetData.ben2}
+                                    onChange={(e) => setCabinetData({ ...cabinetData, ben2: e.target.value })}
+                                />
+                            </div>
                         </div>
                     </div>
 
@@ -463,6 +544,41 @@ export const KahimaDashboard = ({ user, onLogout }: any) => {
                             className="bg-green-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-green-700"
                         >
                             Create All Accounts
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Application Results Modal */}
+            <Modal isOpen={showResultsModal} onClose={() => setShowResultsModal(false)} title="Akun Berhasil Dibuat">
+                <div className="space-y-4">
+                    <div className="bg-green-50 text-green-800 p-4 rounded-lg text-sm">
+                        Total {createdAccounts.length} akun berhasil dibuat. Simpan informasi ini!
+                    </div>
+                    <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-2">
+                        {createdAccounts.map((acc, idx) => (
+                            <div key={idx} className="bg-white border rounded p-3 text-sm shadow-sm">
+                                <p className="font-bold">{acc.name}</p>
+                                <p className="text-gray-600">{acc.role}</p>
+                                <div className="mt-2 bg-gray-50 p-2 rounded font-mono text-xs">
+                                    <p>Email: {acc.email}</p>
+                                    <p>Pass: {acc.password}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="flex justify-end pt-4 gap-3">
+                        <button
+                            onClick={copyToClipboard}
+                            className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-bold hover:bg-gray-200 flex items-center gap-2"
+                        >
+                            <FileText size={16} /> Copy All
+                        </button>
+                        <button
+                            onClick={() => setShowResultsModal(false)}
+                            className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700"
+                        >
+                            Done
                         </button>
                     </div>
                 </div>
