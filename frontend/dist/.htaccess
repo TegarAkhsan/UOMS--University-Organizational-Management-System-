@@ -1,0 +1,31 @@
+# <IfModule mod_rewrite.c>
+#   RewriteEngine On
+#   RewriteBase /
+
+#   # 1. API and Sanctum requests -> index.php (Laravel)
+#   RewriteCond %{REQUEST_URI} ^/(api|sanctum)
+#   RewriteRule ^(.*)$ index.php [L]
+
+#   # 2. React SPA Routing -> index.html
+#   RewriteRule ^index\.html$ - [L]
+#   RewriteCond %{REQUEST_FILENAME} !-f
+#   RewriteCond %{REQUEST_FILENAME} !-d
+#   RewriteRule . /index.html [L]
+# </IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # =========================
+  # 1️⃣ BIARKAN API LEWAT KE FOLDER /api
+  # =========================
+  RewriteCond %{REQUEST_URI} ^/api
+  RewriteRule ^ - [L]
+
+  # =========================
+  # 2️⃣ REACT SPA ROUTING
+  # =========================
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>
